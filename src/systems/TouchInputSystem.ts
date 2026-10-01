@@ -1,12 +1,12 @@
 type Point={x:number;y:number};
-type Actions={drop:()=>void;rotate:(direction:number)=>void;move:(dx:number,dy:number)=>void;aim:(x:number,y:number)=>void};
+type Actions={drop:()=>void;move:(dx:number,dy:number)=>void;aim:(x:number,y:number)=>void};
 
 /** Touch gestures stay separate from mouse/keyboard and never create preview bodies. */
 export class TouchInputSystem{
  private active:{id:number;start:Point;last:Point;button:boolean;holding:boolean;swiped:boolean}|null=null;
  private fingers=new Set<number>();private timer=0;private blocked=false;private suppressClickUntil=0;
  constructor(canvas:HTMLCanvasElement,private button:HTMLElement,private actions:Actions){
-  const showTouch=()=>{document.body.dataset.input='touch';button.innerHTML='放下 <kbd>长按微调</kbd>';document.querySelector('.controls')!.textContent='点画面选位置 · 左右滑动旋转 · 双指环绕/缩放';};
+  const showTouch=()=>{document.body.dataset.input='touch';button.innerHTML='放下 <kbd>长按微调</kbd>';document.querySelector('.controls')!.textContent='点画面选位置 · 单指转视角 · 双指缩放';};
   if(matchMedia('(pointer: coarse)').matches)showTouch();
   document.addEventListener('pointerdown',e=>{
    if(e.pointerType!=='touch')return;
@@ -19,7 +19,7 @@ export class TouchInputSystem{
     const point={x:e.clientX,y:e.clientY};
     this.active={id:e.pointerId,start:point,last:point,button:element===button,holding:false,swiped:false};
     if(element===button){element.setPointerCapture(e.pointerId);e.preventDefault();this.suppressClickUntil=performance.now()+1500;}
-    this.timer=window.setTimeout(()=>{if(this.active&&!this.active.swiped){this.active.holding=true;this.active.last={x:this.active.last.x,y:this.active.last.y};button.classList.add('placing');button.innerHTML='松开放下 <kbd>拖动微调</kbd>';}},300);
+    if(element===button)this.timer=window.setTimeout(()=>{if(this.active&&!this.active.swiped){this.active.holding=true;this.active.last={x:this.active.last.x,y:this.active.last.y};button.classList.add('placing');button.innerHTML='松开放下 <kbd>拖动微调</kbd>';}},300);
    });
   }
   document.addEventListener('pointermove',e=>{
@@ -28,9 +28,6 @@ export class TouchInputSystem{
    if(a.holding){this.actions.move(dx,dy);}
    else if(!a.button&&Math.hypot(e.clientX-a.start.x,e.clientY-a.start.y)>12){
     clearTimeout(this.timer);a.swiped=true;
-    if(Math.abs(e.clientX-a.last.x)>=40&&Math.abs(e.clientX-a.start.x)>Math.abs(e.clientY-a.start.y)){
-     this.actions.rotate(Math.sign(e.clientX-a.last.x));a.last={x:e.clientX,y:e.clientY};
-    }
     return;
    }
    a.last={x:e.clientX,y:e.clientY};

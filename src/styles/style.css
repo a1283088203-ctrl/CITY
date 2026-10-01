@@ -23,3 +23,5 @@ body[data-input="touch"] #drop.placing{background:#b1853e;outline:2px solid #ffe
 @media(pointer:coarse) and (max-width:440px){.weather{top:calc(52px + env(safe-area-inset-top))}.score-footer .score-total{min-width:100px}.score-total strong{font-size:15px}}
 @media(pointer:coarse) and (orientation:landscape){.hud-actions{bottom:max(10px,env(safe-area-inset-bottom));right:max(10px,env(safe-area-inset-right));flex-direction:column}.controls{bottom:calc(98px + env(safe-area-inset-bottom))}}
 body[data-input="touch"] .score-total .eyebrow{white-space:nowrap;font-size:6px}
+
+.rotate-label{display:none}body[data-input="touch"] .rotate-label{display:block;font:10px "Microsoft YaHei",sans-serif;margin-top:3px}
