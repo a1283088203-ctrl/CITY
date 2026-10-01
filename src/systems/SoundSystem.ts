@@ -29,7 +29,8 @@ export class SoundSystem{
   const t=c.currentTime,source=c.createBufferSource(),filter=c.createBiquadFilter(),gain=c.createGain();source.buffer=this.noise;filter.type='lowpass';filter.frequency.value=frequency;gain.gain.setValueAtTime(volume,t);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);source.connect(filter).connect(gain).connect(this.master);this.voices++;source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();this.voices--;};source.start();source.stop(t+duration);
  }
  tick(){this.tone(580,400,.065,.09,'triangle');}
- drop(){this.tone(150,42,.25,.38);this.tone(80,33,.32,.24,'triangle');this.rustle(.085,.1,520);}
+ // Stronger thump plus an audible midrange attack for phone speakers.
+ drop(){this.tone(150,42,.28,.65);this.tone(80,33,.34,.4,'triangle');this.tone(480,180,.2,.36,'triangle');this.rustle(.1,.16,900);}
  impact(speed:number){const t=this.context?.currentTime??0;if(t-this.lastImpact<.13)return;this.lastImpact=t;this.tone(95,35,.22,Math.min(.32,.08+speed*.012));this.rustle(.09,.055,700);}
  merge(level:number){const root=400+level*28;[1,1.25,1.5].forEach((ratio,i)=>{this.tone(root*ratio*1.45,root*ratio,.13,.23,'sine',i*.085);this.tone(root*ratio*.5,root*ratio*.65,.09,.06,'triangle',i*.085);});}
  collapse(){this.rustle(.5,.2,1000);this.tone(130,30,.45,.28,'triangle');[0,.07,.15].forEach(delay=>this.tone(230,70,.12,.09,'square',delay));}
