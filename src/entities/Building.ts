@@ -1,0 +1,33 @@
+import * as T from 'three';
+import type RAPIER from '@dimforge/rapier3d-compat';
+import { buildingData, type BuildingData } from '../data/buildings';
+import {box,litBox} from '../utils/mesh';
+export function buildingModel(data:BuildingData,ghost=false,era=0){
+ const g=new T.Group(),{width:w,depth:d,height:h,level:l}=data;
+ box(g,w,h,d,0,0,0,data.color);
+ box(g,w+.1,.12,d+.1,0,-h/2+.1,0,0x668177);
+ // Separate the roof and body top surfaces to prevent z-fighting.
+ box(g,w+.12,.18,d+.12,0,h/2+.09,0,data.roof);
+ if(l<=2){for(let i=0;i<4;i++)box(g,w*(1-i*.2),.16,d+.2,0,h/2+.26+i*.16,0,data.roof);box(g,.18,.48,.22,w*.27,h/2+.65,0,0x8c776c);}
+ const floors=Math.max(1,Math.floor(h/.65)),cols=Math.max(2,Math.floor(w/.55));
+ for(let f=0;f<floors;f++)for(let c=0;c<cols;c++){
+ const y=-h/2+.5+f*(h-.65)/Math.max(1,floors-1),x=(c-(cols-1)/2)*w/(cols+1),color=l>=6?(c%2?0xf4c2a6:0x8de4e4):0x446875;
+ const illuminated=(f*cols+c)%(l<=2?4:l<=4?3:5)<(l<=4?1:4),emission=l<6?0xffc780:(c%2?0xffac8e:0x77eee0);
+ if(illuminated){litBox(g,.22,.28,.025,x,y,d/2+.02,0x446875,emission,l<3?1.7:2.5);litBox(g,.025,.28,.22,w/2+.02,y,x*d/w,0x446875,emission,l<3?1.7:2.5);litBox(g,.22,.28,.025,x,y,-d/2-.02,0x446875,emission,l<3?1.7:2.5);litBox(g,.025,.28,.22,-w/2-.02,y,x*d/w,0x446875,emission,l<3?1.7:2.5);}
+ else{box(g,.22,.28,.025,x,y,d/2+.02,0x446875);box(g,.025,.28,.22,w/2+.02,y,x*d/w,0x446875);box(g,.22,.28,.025,x,y,-d/2-.02,0x446875);box(g,.025,.28,.22,-w/2-.02,y,x*d/w,0x446875);}
+ }
+ box(g,.36,.56,.06,0,-h/2+.28,d/2+.06,0x385a61);
+ if(era>=1&&l>=2&&l<=4){box(g,w*.62,.08,.4,0,-h/2+.85,d/2+.16,0xc48163);litBox(g,w*.52,.18,.04,0,-h/2+1.08,d/2+.05,0xd8bf8f,0xffce94,1.7);}
+ if(l>=3)box(g,w*.35,.3,d*.35,-w*.2,h/2+.33,0,0x829591);
+ if(l>=5){box(g,.12,h*.8,.12,-w/2-.1,0,d/2,0xf2ca87);box(g,w+.2,.15,d+.2,0,h*.2,0,data.roof);}
+ if(l>=6){litBox(g,.08,h*.9,.08,w/2+.13,0,d/2,0x488b85,0x63e9dc,3);litBox(g,w*.65,.65,.12,0,h*.25,d/2+.12,0xbb728b,0xf083a7,2.1);}
+ if(l>=7){box(g,w+1,.25,d+.5,0,h*.33,0,data.roof);box(g,.12,1.8,.12,0,h/2+.9,0,0x8fe7df);}
+ if(ghost)g.traverse(o=>{if(o instanceof T.Mesh){o.material=(o.material as T.Material).clone();Object.assign(o.material,{transparent:true,opacity:.32,depthWrite:false});o.castShadow=false;o.userData.ghost=true;}});
+ return g;
+}
+export class Building{
+ age=0;stable=0;windAnchor=false;windReady=false;windSettleTime=0;previousVelocityY=0;impactCooldown=0;readonly data:BuildingData;readonly mesh:T.Group;
+ constructor(public id:number,public level:number,public body:RAPIER.RigidBody,public collider:RAPIER.Collider,public era=0){this.data=buildingData(level);this.mesh=buildingModel(this.data,false,era);this.sync();}
+ sync(){this.mesh.position.copy(this.body.translation());this.mesh.quaternion.copy(this.body.rotation());}
+}
+
