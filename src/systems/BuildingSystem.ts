@@ -8,11 +8,11 @@ import {WIND} from '../data/wind';
 export class BuildingSystem{
  buildings:Building[]=[];private serial=0;revision=0;era=0;onImpact:(building:Building,speed:number)=>void=()=>{};
  constructor(public scene:T.Scene,public physics:PhysicsSystem,public onCollapse:(building:Building)=>void=()=>{}){}
- spawn(level:number,x:number,y:number,z:number,yaw=0,tilt=false){
+ spawn(level:number,x:number,y:number,z:number,yaw=0,tilt=false,variant?:number){
  const d=buildingData(level),q=new T.Quaternion().setFromEuler(new T.Euler(tilt?.018:0,yaw,tilt?-.015:0));
  const body=this.physics.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(x,y,z).setRotation(q).setLinearDamping(.35).setAngularDamping(1.6).setCcdEnabled(true));
  const collider=this.physics.world.createCollider(RAPIER.ColliderDesc.cuboid(d.width/2,d.height/2,d.depth/2).setFriction(.75).setRestitution(.06).setMass(d.mass),body);
- const b=new Building(++this.serial,level,body,collider,this.era);b.windAnchor=b.id===1;this.buildings.push(b);this.scene.add(b.mesh);this.revision++;return b;
+ const b=new Building(++this.serial,level,body,collider,this.era,variant);b.windAnchor=b.id===1;this.buildings.push(b);this.scene.add(b.mesh);this.revision++;return b;
  }
  remove(b:Building){b.mesh.removeFromParent();this.physics.world.removeRigidBody(b.body);this.buildings=this.buildings.filter(a=>a!==b);this.revision++;}
  update(dt:number){for(const b of [...this.buildings]){

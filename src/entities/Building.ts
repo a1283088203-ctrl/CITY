@@ -2,7 +2,8 @@ import * as T from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { buildingData, type BuildingData } from '../data/buildings';
 import {box,litBox} from '../utils/mesh';
-export function buildingModel(data:BuildingData,ghost=false,era=0){
+import {decorateResidence,randomBuildingVariant} from './BuildingDecorations';
+export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  const g=new T.Group(),{width:w,depth:d,height:h,level:l}=data;
  box(g,w,h,d,0,0,0,data.color);
  box(g,w+.1,.12,d+.1,0,-h/2+.1,0,0x668177);
@@ -22,12 +23,13 @@ export function buildingModel(data:BuildingData,ghost=false,era=0){
  if(l>=5){box(g,.12,h*.8,.12,-w/2-.1,0,d/2,0xf2ca87);box(g,w+.2,.15,d+.2,0,h*.2,0,data.roof);}
  if(l>=6){litBox(g,.08,h*.9,.08,w/2+.13,0,d/2,0x488b85,0x63e9dc,3);litBox(g,w*.65,.65,.12,0,h*.25,d/2+.12,0xbb728b,0xf083a7,2.1);}
  if(l>=7){box(g,w+1,.25,d+.5,0,h*.33,0,data.roof);box(g,.12,1.8,.12,0,h/2+.9,0,0x8fe7df);}
+ decorateResidence(g,data,variant);
  if(ghost)g.traverse(o=>{if(o instanceof T.Mesh){o.material=(o.material as T.Material).clone();Object.assign(o.material,{transparent:true,opacity:.32,depthWrite:false});o.castShadow=false;o.userData.ghost=true;}});
  return g;
 }
 export class Building{
  age=0;stable=0;windAnchor=false;windReady=false;windSettleTime=0;previousVelocityY=0;impactCooldown=0;readonly data:BuildingData;readonly mesh:T.Group;
- constructor(public id:number,public level:number,public body:RAPIER.RigidBody,public collider:RAPIER.Collider,public era=0){this.data=buildingData(level);this.mesh=buildingModel(this.data,false,era);this.sync();}
+ constructor(public id:number,public level:number,public body:RAPIER.RigidBody,public collider:RAPIER.Collider,public era=0,public readonly variant=randomBuildingVariant()){this.data=buildingData(level);this.mesh=buildingModel(this.data,false,era,variant);this.sync();}
  sync(){this.mesh.position.copy(this.body.translation());this.mesh.quaternion.copy(this.body.rotation());}
 }
 
