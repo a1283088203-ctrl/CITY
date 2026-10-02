@@ -25,3 +25,14 @@ body[data-input="touch"] #drop.placing{background:#b1853e;outline:2px solid #ffe
 body[data-input="touch"] .score-total .eyebrow{white-space:nowrap;font-size:6px}
 
 .rotate-label{display:none}body[data-input="touch"] .rotate-label{display:block;font:10px "Microsoft YaHei",sans-serif;margin-top:3px}
+
+.pause-toggle{position:fixed;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));width:44px;height:44px;font:20px monospace;z-index:22}
+.weather{right:70px}#pause-menu{position:fixed;inset:0;display:grid;place-items:center;background:#071b28b8;pointer-events:auto;z-index:30}#pause-menu[hidden]{display:none}.pause-panel{padding:24px;min-width:240px;text-align:center}.pause-panel h2{font:18px 'Microsoft YaHei',sans-serif;margin:0 0 20px}.pause-panel .weather-actions{display:flex;flex-direction:column;margin-top:12px;gap:12px}.pause-panel button{width:100%;min-height:44px}.pause-panel #sound{margin:0}
+body.paused footer,body.paused .build-strip{visibility:hidden}
+#missile{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:44px;font:10px 'Microsoft YaHei',sans-serif}#missile[aria-pressed="true"]{background:#965d3d;outline:2px solid #ffc27a}button:disabled{opacity:.5;cursor:default}body[data-tool="missile"] #drop{background:#965d3d}
+@media(pointer:coarse),(max-width:650px){
+ .stats,.weather{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 120px)}
+ .stats{top:calc(10px + env(safe-area-inset-top));padding:9px}.weather{top:calc(48px + env(safe-area-inset-top));padding:9px}.weather .clock{gap:9px}.weather #wind-state{font-size:6px}
+ .score-footer{width:calc(100% - 20px);max-width:420px;display:grid;grid-template-columns:1fr 48px 48px 92px;gap:6px}.score-footer .score-total{min-width:0}.score-total strong{font-size:13px}.score-total .eyebrow{font-size:5px!important}.score-footer #drop{min-width:0}.controls{text-align:center;left:10px;right:10px;bottom:calc(98px + env(safe-area-inset-bottom))}.build-strip{display:none}
+}
+@media(max-width:360px){.score-footer{grid-template-columns:1fr 42px 42px 78px;padding:6px;gap:4px}.score-total strong{font-size:11px}.score-total .eyebrow{font-size:4px!important}}

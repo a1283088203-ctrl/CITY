@@ -12,7 +12,7 @@ export class RoadSystem{
  rebuild(buildings:Building[],force=false,stage=0){
  const blocked=new Set(this.terrain?.blocked??[]),bounds:{b:Building;box:T.Box3}[]=[];
  for(const k of this.terrain?.bridges??[])blocked.delete(k);
- for(const b of buildings){if(b.age<.6)continue;const bb=new T.Box3().setFromObject(b.mesh);bounds.push({b,box:bb});for(let x=0;x<CITY.size;x++)for(let z=0;z<CITY.size;z++){const p=toWorld({x,z});const margin=z===(this.terrain?.bridgeRow??8)?.54:.36;if(p.x+margin>bb.min.x&&p.x-margin<bb.max.x&&p.z+margin>bb.min.z&&p.z-margin<bb.max.z)blocked.add(key({x,z}));}}
+ for(const b of buildings){if(b.age<.6)continue;b.mesh.updateWorldMatrix(true,true);const bb=new T.Box3();for(const part of b.mesh.children)if(part.name!=='residential-decoration')bb.expandByObject(part);bounds.push({b,box:bb});for(let x=0;x<CITY.size;x++)for(let z=0;z<CITY.size;z++){const p=toWorld({x,z});const margin=z===(this.terrain?.bridgeRow??8)?.54:.36;if(p.x+margin>bb.min.x&&p.x-margin<bb.max.x&&p.z+margin>bb.min.z&&p.z-margin<bb.max.z)blocked.add(key({x,z}));}}
  const signature=`${this.terrain?.version??0}:${bounds.map(({b})=>b.id).join(',')}:`+[...blocked].sort().join(';');if(!force&&signature===this.signature)return;this.signature=signature;this.blocked=blocked;this.roads.clear();this.mainRoads.clear();this.entrances=[];this.entranceKeys.clear();this.entranceByBuilding.clear();
  // One narrow cross-village avenue; river crossings only use reserved bridge cells.
  const row=this.terrain?.bridgeRow??8;
