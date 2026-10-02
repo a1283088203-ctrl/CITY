@@ -1,7 +1,7 @@
 import * as T from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { buildingData, type BuildingData } from '../data/buildings';
-import {box,litBox} from '../utils/mesh';
+import {box,litBox,windowBox} from '../utils/mesh';
 import {decorateResidence,randomBuildingVariant} from './BuildingDecorations';
 export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  const g=new T.Group(),{width:w,depth:d,height:h,level:l}=data;
@@ -14,7 +14,7 @@ export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  for(let f=0;f<floors;f++)for(let c=0;c<cols;c++){
  const y=-h/2+.5+f*(h-.65)/Math.max(1,floors-1),x=(c-(cols-1)/2)*w/(cols+1),color=l>=6?(c%2?0xf4c2a6:0x8de4e4):0x446875;
  const illuminated=(f*cols+c)%(l<=2?4:l<=4?3:5)<(l<=4?1:4),emission=l<6?0xffc780:(c%2?0xffac8e:0x77eee0);
- if(illuminated){litBox(g,.22,.28,.025,x,y,d/2+.02,0x446875,emission,l<3?1.7:2.5);litBox(g,.025,.28,.22,w/2+.02,y,x*d/w,0x446875,emission,l<3?1.7:2.5);litBox(g,.22,.28,.025,x,y,-d/2-.02,0x446875,emission,l<3?1.7:2.5);litBox(g,.025,.28,.22,-w/2-.02,y,x*d/w,0x446875,emission,l<3?1.7:2.5);}
+ if(illuminated){windowBox(g,.22,.28,.025,x,y,d/2+.02,0x446875,emission,l<3?1.7:2.5);windowBox(g,.025,.28,.22,w/2+.02,y,x*d/w,0x446875,emission,l<3?1.7:2.5);windowBox(g,.22,.28,.025,x,y,-d/2-.02,0x446875,emission,l<3?1.7:2.5);windowBox(g,.025,.28,.22,-w/2-.02,y,x*d/w,0x446875,emission,l<3?1.7:2.5);}
  else{box(g,.22,.28,.025,x,y,d/2+.02,0x446875);box(g,.025,.28,.22,w/2+.02,y,x*d/w,0x446875);box(g,.22,.28,.025,x,y,-d/2-.02,0x446875);box(g,.025,.28,.22,-w/2-.02,y,x*d/w,0x446875);}
  }
  box(g,.36,.56,.06,0,-h/2+.28,d/2+.06,0x385a61);

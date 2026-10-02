@@ -2,6 +2,9 @@ import * as T from 'three';
 const geometry=new T.BoxGeometry(1,1,1);
 const materials=new Map<number,T.MeshLambertMaterial>();
 const glowing=new Map<string,{material:T.MeshLambertMaterial;intensity:number}>();
+type WindowLight={material:T.MeshLambertMaterial;intensity:number;brightness:number;target:number;remaining:number};
+const windows=new Map<string,WindowLight>();
+const randomBrightness=()=>Math.random()<.22?1.4+Math.random()*.4:.35+Math.random()*.55;
 let nightAmount=0;
 export function box(parent:T.Object3D,w:number,h:number,d:number,x:number,y:number,z:number,color:number){
  let material=materials.get(color);if(!material){material=new T.MeshLambertMaterial({color});materials.set(color,material);}
@@ -13,5 +16,19 @@ export function litBox(parent:T.Object3D,w:number,h:number,d:number,x:number,y:n
  let entry=glowing.get(id);if(!entry){const material=new T.MeshLambertMaterial({color,emissive:emission,emissiveIntensity:intensity*nightAmount});entry={material,intensity};glowing.set(id,entry);}
  mesh.material=entry.material;return mesh;
 }
-export function setNightLights(amount:number){nightAmount=amount;for(const entry of glowing.values())entry.material.emissiveIntensity=amount*entry.intensity;}
+/** Randomly assigned, bounded material groups keep windows inexpensive on phones. */
+export function windowBox(parent:T.Object3D,w:number,h:number,d:number,x:number,y:number,z:number,color:number,emission:number,intensity=2){
+ const mesh=box(parent,w,h,d,x,y,z,color),id=`${emission}:${intensity}:${Math.floor(Math.random()*32)}`;
+ let entry=windows.get(id);
+ if(!entry){const brightness=randomBrightness();entry={material:new T.MeshLambertMaterial({color,emissive:emission,emissiveIntensity:intensity*nightAmount*brightness}),intensity,brightness,target:brightness,remaining:3+Math.random()*15};windows.set(id,entry);}
+ mesh.material=entry.material;mesh.userData.windowLight=true;return mesh;
+}
+export function setNightLights(amount:number,dt=0){
+ nightAmount=amount;for(const entry of glowing.values())entry.material.emissiveIntensity=amount*entry.intensity;
+ for(const entry of windows.values()){
+  if(amount>.01){entry.remaining-=dt;if(entry.remaining<=0){entry.target=randomBrightness();entry.remaining=6+Math.random()*14;}
+   entry.brightness+=(entry.target-entry.brightness)*(1-Math.exp(-Math.max(0,dt)/1.8));}
+  entry.material.emissiveIntensity=amount*entry.intensity*entry.brightness;
+ }
+}
 export function disposeTree(root:T.Object3D){root.traverse(o=>{if(o instanceof T.Mesh && o.userData.owned){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});root.removeFromParent();}

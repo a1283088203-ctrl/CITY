@@ -28,7 +28,7 @@ export class CityScene{
   (this.scene.background as T.Color).copy(time.sky);(this.scene.fog as T.Fog).color.copy(time.sky);
   this.sun.color.copy(time.sun);this.sun.intensity=time.sunPower;this.ambient.color.copy(time.ambient);this.ambient.intensity=time.ambientPower;
   const angle=(time.hour-6)/24*Math.PI*2;this.sun.position.set(Math.cos(angle)*28,Math.max(9,Math.sin(angle)*35),18);
-  setNightLights(time.night);
+  setNightLights(time.night,dt);
   this.bloomStage+=(STAGES[Math.max(0,this.stage)].bloom-this.bloomStage)*(1-Math.exp(-dt*.25));
   if(this.bloom){this.bloom.strength=this.bloomStage*(.12+.88*time.night);this.bloom.radius=.12+this.bloomStage*.15;}
  }
