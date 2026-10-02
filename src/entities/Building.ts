@@ -1,6 +1,7 @@
 import * as T from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { buildingData, type BuildingData } from '../data/buildings';
+import {batchStatic} from '../utils/batch';
 import {box,litBox,windowBox} from '../utils/mesh';
 import {decorateResidence,randomBuildingVariant} from './BuildingDecorations';
 export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
@@ -30,8 +31,8 @@ export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  return g;
 }
 export class Building{
- age=0;stable=0;windAnchor=false;windReady=false;windSettleTime=0;previousVelocityY=0;impactCooldown=0;readonly data:BuildingData;readonly mesh:T.Group;
- constructor(public id:number,public level:number,public body:RAPIER.RigidBody,public collider:RAPIER.Collider,public era=0,public readonly variant=randomBuildingVariant()){this.data=buildingData(level);this.mesh=buildingModel(this.data,false,era,variant);this.sync();}
- sync(){this.mesh.position.copy(this.body.translation());this.mesh.quaternion.copy(this.body.rotation());}
+ age=0;stable=0;windAnchor=false;windReady=false;windSettleTime=0;previousVelocityY=0;impactCooldown=0;readonly data:BuildingData;readonly mesh:T.Group;readonly bounds=new T.Box3();readonly structuralBounds=new T.Box3();private localBounds=new T.Box3();private localStructure=new T.Box3();
+ constructor(public id:number,public level:number,public body:RAPIER.RigidBody,public collider:RAPIER.Collider,public era=0,public readonly variant=randomBuildingVariant()){this.data=buildingData(level);this.mesh=buildingModel(this.data,false,era,variant);batchStatic(this.mesh);const decoration=this.mesh.getObjectByName('residential-decoration') as T.Group;batchStatic(decoration);this.localBounds.setFromObject(this.mesh);for(const part of this.mesh.children)if(part!==decoration)this.localStructure.expandByObject(part);this.sync();}
+ sync(){this.mesh.position.copy(this.body.translation());this.mesh.quaternion.copy(this.body.rotation());this.mesh.updateMatrix();this.bounds.copy(this.localBounds).applyMatrix4(this.mesh.matrix);this.structuralBounds.copy(this.localStructure).applyMatrix4(this.mesh.matrix);}
 }
 

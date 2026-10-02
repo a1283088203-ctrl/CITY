@@ -24,13 +24,13 @@ export class DemolitionSystem{
  targetAt(x:number,z:number){
   let target:Building|undefined,top=-Infinity;
   for(const b of this.buildings.buildings){
-   const bounds=new T.Box3().setFromObject(b.mesh);
+   const bounds=b.bounds;
    if(x>=bounds.min.x&&x<=bounds.max.x&&z>=bounds.min.z&&z<=bounds.max.z&&bounds.max.y>top){target=b;top=bounds.max.y;}
   }
   return target;
  }
  aim(x:number,z:number){
-  const target=this.targetAt(x,z),top=target?new T.Box3().setFromObject(target.mesh).max.y:0;
+  const target=this.targetAt(x,z),top=target?target.bounds.max.y:0;
   this.preview.position.set(x,top+5,z);return target;
  }
  launch(x:number,z:number){

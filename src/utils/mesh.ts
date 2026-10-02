@@ -4,6 +4,7 @@ const materials=new Map<number,T.MeshLambertMaterial>();
 const glowing=new Map<string,{material:T.MeshLambertMaterial;intensity:number}>();
 type WindowLight={material:T.MeshLambertMaterial;intensity:number;brightness:number;target:number;remaining:number;litChance:number};
 const windows=new Map<string,WindowLight>();
+const windowGroups=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches?8:32;
 const randomBrightness=(litChance:number)=>Math.random()>litChance?0:Math.random()<.22?1.4+Math.random()*.4:.35+Math.random()*.55;
 let nightAmount=0;
 export function box(parent:T.Object3D,w:number,h:number,d:number,x:number,y:number,z:number,color:number){
@@ -18,10 +19,10 @@ export function litBox(parent:T.Object3D,w:number,h:number,d:number,x:number,y:n
 }
 /** Randomly assigned, bounded material groups keep windows inexpensive on phones. */
 export function windowBox(parent:T.Object3D,w:number,h:number,d:number,x:number,y:number,z:number,color:number,emission:number,intensity=2,litChance=.65){
- const mesh=box(parent,w,h,d,x,y,z,color),id=`${emission}:${intensity}:${litChance}:${Math.floor(Math.random()*32)}`;
+ const mesh=box(parent,w,h,d,x,y,z,color),id=`${emission}:${intensity}:${litChance}:${Math.floor(Math.random()*windowGroups)}`;
  let entry=windows.get(id);
  if(!entry){const brightness=randomBrightness(litChance);entry={material:new T.MeshLambertMaterial({color,emissive:emission,emissiveIntensity:intensity*nightAmount*brightness}),intensity,brightness,target:brightness,remaining:3+Math.random()*15,litChance};windows.set(id,entry);}
- mesh.material=entry.material;mesh.userData.windowLight=true;return mesh;
+ mesh.material=entry.material;mesh.userData.windowLight=true;mesh.castShadow=false;return mesh;
 }
 export function setNightLights(amount:number,dt=0){
  nightAmount=amount;for(const entry of glowing.values())entry.material.emissiveIntensity=amount*entry.intensity;

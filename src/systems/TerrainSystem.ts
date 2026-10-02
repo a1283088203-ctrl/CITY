@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {batchStatic,disposeBatches} from '../utils/batch';
 import {CITY} from '../data/cityConfig';
 import {box} from '../utils/mesh';
 import {seeded,clamp} from '../utils/math';
@@ -10,7 +11,7 @@ export class TerrainSystem{
  seed=0;version=0;bridgeRow=8;private ripples:T.Mesh[]=[];private rippleTime=0;
  constructor(scene:T.Scene){scene.add(this.group);}
  generate(seed=Math.floor(Math.random()*0xffffffff)){
-  this.seed=seed;this.version++;this.group.clear();this.water.clear();this.blocked.clear();this.bridges.clear();this.banks.clear();this.ripples=[];this.rippleTime=0;
+  this.seed=seed;this.version++;disposeBatches(this.group);this.group.clear();this.water.clear();this.blocked.clear();this.bridges.clear();this.banks.clear();this.ripples=[];this.rippleTime=0;
   const random=seeded(seed);let x=5+Math.floor(random()*5);this.bridgeRow=6+Math.floor(random()*4);
   for(let z=0;z<CITY.size;z++){
    const previous=x;if(z%2===0)x=clamp(x+Math.floor(random()*3)-1,4,10);
@@ -29,6 +30,7 @@ export class TerrainSystem{
     if(cx>1&&cx<14&&z!==this.bridgeRow&&random()<.023){this.blocked.add(k);box(this.group,.7,.4,.6,w.x,.2,w.z,0x8d9c85);box(this.group,.44,.25,.4,w.x+.1,.48,w.z-.04,0xa9b29a);}
    }
   }
+  const animated=new Set(this.ripples);batchStatic(this.group,m=>animated.has(m));
  }
  canPlace(x:number,z:number,width:number,depth:number,yaw=0){
   const w=Math.abs(Math.cos(yaw))*width+Math.abs(Math.sin(yaw))*depth,d=Math.abs(Math.sin(yaw))*width+Math.abs(Math.cos(yaw))*depth;

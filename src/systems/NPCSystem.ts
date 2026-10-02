@@ -4,11 +4,11 @@ import {RoadSystem} from './RoadSystem';
 import {PathfindingSystem} from './PathfindingSystem';
 import {key,toWorld} from '../utils/grid';
 export class NPCSystem{
- agents:NPC[]=[];protected version=-1;private populationTimer=0;
+ agents:NPC[]=[];protected version=-1;private populationTimer=0;private nodesVersion=-1;private cachedNodes:ReturnType<RoadSystem['nodes']>=[];
  constructor(protected scene:T.Scene,protected roads:RoadSystem,protected paths:PathfindingSystem,protected driving=false){}
  protected create(){return new NPC([0xd28b66,0xe4c170,0x5f8f92,0x977fa1][Math.floor(Math.random()*4)]);}
  update(dt:number,population:number,stage:number,activity=1){
- const nodes=this.roads.nodes();if(nodes.length<2)return;
+ if(this.nodesVersion!==this.roads.version){this.cachedNodes=this.roads.nodes();this.nodesVersion=this.roads.version;}const nodes=this.cachedNodes;if(nodes.length<2)return;
  const dayTarget=this.driving?Math.min(22,1+Math.floor(Math.sqrt(population)/14)):Math.min(65,3+Math.floor(Math.sqrt(population)*.55));
  const target=Math.max(this.driving?1:0,Math.round(dayTarget*activity));this.populationTimer+=dt;
  if(this.populationTimer>.35){this.populationTimer=0;if(this.agents.length<target){const a=this.create();this.agents.push(a);this.scene.add(a.mesh);this.place(a,nodes[Math.floor(Math.random()*nodes.length)]);}else if(this.agents.length>target)this.agents.pop()!.mesh.removeFromParent();}
@@ -21,6 +21,6 @@ export class NPCSystem{
  }this.version=this.roads.version;
  }
  private place(a:NPC,node:NPC['node']){a.node=node;const p=toWorld(node),o=this.driving?0:this.roads.sidewalkOffset(node);a.mesh.position.set(p.x+o,.12,p.z+o);}
- reset(){for(const a of this.agents)a.mesh.removeFromParent();this.agents=[];this.version=-1;this.populationTimer=0;}
+ reset(){for(const a of this.agents)a.mesh.removeFromParent();this.agents=[];this.version=-1;this.populationTimer=0;this.nodesVersion=-1;this.cachedNodes=[];}
 }
 

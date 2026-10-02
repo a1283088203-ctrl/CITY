@@ -4,6 +4,7 @@ import {Building} from '../entities/Building';
 import {buildingData} from '../data/buildings';
 import {PhysicsSystem} from './PhysicsSystem';
 import {speed} from '../utils/math';
+import {disposeBatches} from '../utils/batch';
 import {WIND} from '../data/wind';
 export class BuildingSystem{
  buildings:Building[]=[];private serial=0;revision=0;era=0;onImpact:(building:Building,speed:number)=>void=()=>{};
@@ -14,7 +15,7 @@ export class BuildingSystem{
  const collider=this.physics.world.createCollider(RAPIER.ColliderDesc.cuboid(d.width/2,d.height/2,d.depth/2).setFriction(.75).setRestitution(.06).setMass(d.mass),body);
  const b=new Building(++this.serial,level,body,collider,this.era,variant);b.windAnchor=b.id===1;this.buildings.push(b);this.scene.add(b.mesh);this.revision++;return b;
  }
- remove(b:Building){b.mesh.removeFromParent();this.physics.world.removeRigidBody(b.body);this.buildings=this.buildings.filter(a=>a!==b);this.revision++;}
+ remove(b:Building){disposeBatches(b.mesh);b.mesh.removeFromParent();this.physics.world.removeRigidBody(b.body);this.buildings=this.buildings.filter(a=>a!==b);this.revision++;}
  update(dt:number){for(const b of [...this.buildings]){
   b.age+=dt;b.stable=speed(b.body.linvel())<.2?b.stable+dt:0;
   b.body.setAngularDamping(b.stable>2?3:1.6);b.sync();
