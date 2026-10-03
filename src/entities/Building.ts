@@ -26,7 +26,7 @@ export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  if(era>=1&&l>=2&&l<=4){box(g,w*.62,.08,.4,0,-h/2+.85,d/2+.16,0xc48163);litBox(g,w*.52,.18,.04,0,-h/2+1.08,d/2+.05,0xd8bf8f,0xffce94,1.7);}
  if(l>=3)box(g,w*.35,.3,d*.35,-w*.2,h/2+.33,0,0x829591);
  if(l>=5){box(g,.12,h*.8,.12,-w/2-.1,0,d/2,0xf2ca87);box(g,w+.2,.15,d+.2,0,h*.2,0,data.roof);}
- if(l>=6){litBox(g,.08,h*.9,.08,w/2+.13,0,d/2,0x488b85,0x63e9dc,3);litBox(g,w*.65,.65,.12,0,h*.25,d/2+.12,0xbb728b,0xf083a7,2.1);}
+ if(l>=6){litBox(g,.08,h*.9,.08,w/2+.13,0,d/2,0x488b85,0x63e9dc,3);litBox(g,w*.65,.65,.12,0,h*.25,d/2+.12,0xc5924e,0xffb552,2.1);}
  if(l>=7){box(g,w+1,.25,d+.5,0,h*.33,0,data.roof);box(g,.12,1.8,.12,0,h/2+.9,0,0x8fe7df);}
  decorateResidence(g,data,variant);
  if(ghost)g.traverse(o=>{if(o instanceof T.Mesh){o.material=(o.material as T.Material).clone();Object.assign(o.material,{transparent:true,opacity:.32,depthWrite:false});o.castShadow=false;o.userData.ghost=true;}});

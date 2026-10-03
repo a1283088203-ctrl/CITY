@@ -19,7 +19,7 @@ export class BoundaryPass extends ShaderPass{
     void main(){
      vec4 source=texture2D(tDiffuse,vUv);float raw=texture2D(tDepth,vUv).x;
      if(raw>.99999){gl_FragColor=source;return;}
-     if(isWindow(source)){gl_FragColor=vec4(source.rgb,1.);return;}
+     if(isWindow(source)||abs(source.a-.75)<.015){gl_FragColor=vec4(source.rgb,1.);return;}
      float z=depthAt(vUv);vec2 dx=vec2(texel.x,0.),dy=vec2(0.,texel.y);
      vec4 leftColor=texture2D(tDiffuse,vUv-dx),rightColor=texture2D(tDiffuse,vUv+dx);
      vec4 bottomColor=texture2D(tDiffuse,vUv-dy),topColor=texture2D(tDiffuse,vUv+dy);

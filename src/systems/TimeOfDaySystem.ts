@@ -5,9 +5,9 @@ const FRAMES=[
  {hour:5,sky:0x26374b,sun:0xf1b8b1,ambient:0xa3acb6,power:.4,fill:.65,night:1},
  {hour:7,sky:0x8dbce8,sun:0xffdac0,ambient:0xcce2dc,power:1.65,fill:1.35,night:.12},
  {hour:10,sky:0x7eb9ea,sun:0xffead0,ambient:0xdff3ef,power:2.1,fill:1.65,night:0},
- {hour:16,sky:0x86b9e4,sun:0xffddb0,ambient:0xdde8d8,power:2.05,fill:1.55,night:0},
- {hour:18.5,sky:0xc68e9d,sun:0xffac77,ambient:0xb5b3c8,power:1.15,fill:1.05,night:.52},
- {hour:21,sky:0x172943,sun:0xb6d3ff,ambient:0xa0b9d2,power:.42,fill:.85,night:1},
+ {hour:16+40/60,sky:0x86b9e4,sun:0xffddb0,ambient:0xdde8d8,power:2.05,fill:1.55,night:0},
+ {hour:17.8,sky:0xc68e9d,sun:0xffac77,ambient:0xb5b3c8,power:1.15,fill:1.05,night:.52},
+ {hour:18+50/60,sky:0x172943,sun:0xb6d3ff,ambient:0xa0b9d2,power:.42,fill:.85,night:1},
  {hour:24,sky:0x172943,sun:0xb6d3ff,ambient:0xa0b9d2,power:.42,fill:.85,night:1}
 ];
 export class TimeOfDaySystem{
@@ -15,7 +15,7 @@ export class TimeOfDaySystem{
  sky=new T.Color();sun=new T.Color();ambient=new T.Color();
  constructor(){this.update(0);}
  update(dt:number){this.elapsed+=dt;const total=9+this.elapsed/this.daySeconds*24;this.hour=total%24;this.day=Math.floor(total/24)+1;
-  this.phase=this.hour>=5&&this.hour<9?'Morning':this.hour>=9&&this.hour<17?'Day':this.hour>=17&&this.hour<20?'Sunset':'Night';
+  this.phase=this.hour>=5&&this.hour<9?'Morning':this.hour>=9&&this.hour<16+40/60?'Day':this.hour>=16+40/60&&this.hour<18+50/60?'Sunset':'Night';
   const i=FRAMES.findIndex((f,index)=>index<FRAMES.length-1&&this.hour>=f.hour&&this.hour<FRAMES[index+1].hour),a=FRAMES[Math.max(0,i)],b=FRAMES[Math.max(0,i)+1];
   const ratio=(this.hour-a.hour)/(b.hour-a.hour),t=ratio*ratio*(3-2*ratio);
   this.sky.setHex(a.sky).lerp(new T.Color(b.sky),t);this.sun.setHex(a.sun).lerp(new T.Color(b.sun),t);this.ambient.setHex(a.ambient).lerp(new T.Color(b.ambient),t);
@@ -25,5 +25,7 @@ export class TimeOfDaySystem{
  activity(stage:number){const nightActivity=[.14,.24,.42,.68,.92][stage]??.92;return 1-this.night*(1-nightActivity);}
  reset(){this.elapsed=0;this.update(0);}
 }
+
+
 
 
