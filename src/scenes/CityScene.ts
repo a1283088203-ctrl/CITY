@@ -20,7 +20,7 @@ export class CityScene{
   this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1;
   this.composer=new EffectComposer(this.renderer);this.composer.addPass(new RenderPass(this.scene,camera));
   this.bloom=new UnrealBloomPass(new T.Vector2(innerWidth/2,innerHeight/2),.12,.18,1.25);this.composer.addPass(this.bloom);this.composer.addPass(new OutputPass());
-  this.scene.add(...this.streetLights);
+  this.scene.add(...this.streetLights);for(const light of [this.sun,this.ambient,...this.streetLights])light.layers.enable(1);
  }
  setStage(index:number){this.stage=index;}
  applyLighting(time:TimeOfDaySystem,dt:number){

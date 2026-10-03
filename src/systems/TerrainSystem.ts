@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {batchStatic,disposeBatches} from '../utils/batch';
+import {WaterReflection} from './WaterReflection';
 import {CITY} from '../data/cityConfig';
 import {box} from '../utils/mesh';
 import {seeded,clamp} from '../utils/math';
@@ -8,10 +9,11 @@ import {key,toWorld,toCell,neighbors,fromKey,type Cell} from '../utils/grid';
 /** A visual voxel landscape and shared planning mask; existing ground physics stays intact. */
 export class TerrainSystem{
  group=new T.Group();water=new Set<string>();blocked=new Set<string>();bridges=new Set<string>();banks=new Set<string>();
+ private reflection?:WaterReflection;
  seed=0;version=0;bridgeRow=8;private ripples:T.Mesh[]=[];private rippleTime=0;
  constructor(scene:T.Scene){scene.add(this.group);}
  generate(seed=Math.floor(Math.random()*0xffffffff)){
-  this.seed=seed;this.version++;disposeBatches(this.group);this.group.clear();this.water.clear();this.blocked.clear();this.bridges.clear();this.banks.clear();this.ripples=[];this.rippleTime=0;
+  this.reflection?.dispose();this.seed=seed;this.version++;disposeBatches(this.group);this.group.clear();this.water.clear();this.blocked.clear();this.bridges.clear();this.banks.clear();this.ripples=[];this.rippleTime=0;
   const random=seeded(seed);let x=5+Math.floor(random()*5);this.bridgeRow=6+Math.floor(random()*4);
   for(let z=0;z<CITY.size;z++){
    const previous=x;if(z%2===0)x=clamp(x+Math.floor(random()*3)-1,4,10);
@@ -30,7 +32,7 @@ export class TerrainSystem{
     if(cx>1&&cx<14&&z!==this.bridgeRow&&random()<.023){this.blocked.add(k);box(this.group,.7,.4,.6,w.x,.2,w.z,0x8d9c85);box(this.group,.44,.25,.4,w.x+.1,.48,w.z-.04,0xa9b29a);}
    }
   }
-  const animated=new Set(this.ripples);batchStatic(this.group,m=>animated.has(m));
+  const animated=new Set(this.ripples);batchStatic(this.group,m=>animated.has(m));this.reflection=new WaterReflection(this.water,this.bridges);this.group.add(this.reflection.surface);
  }
  canPlace(x:number,z:number,width:number,depth:number,yaw=0){
   const w=Math.abs(Math.cos(yaw))*width+Math.abs(Math.sin(yaw))*depth,d=Math.abs(Math.sin(yaw))*width+Math.abs(Math.cos(yaw))*depth;
@@ -44,5 +46,5 @@ export class TerrainSystem{
   for(let x=2;x<14;x++)for(let z=2;z<14;z++){const p=toWorld({x,z});if(z!==this.bridgeRow&&this.canPlace(p.x,p.z,width,depth)&&occupied.every(o=>Math.hypot(o.x-p.x,o.z-p.z)>3.2))candidates.push(p);}
   return candidates.length?candidates[Math.floor(random()*candidates.length)]:null;
  }
- update(dt:number){this.rippleTime+=dt;for(let i=0;i<this.ripples.length;i++)this.ripples[i].scale.x=(.5+Math.sin(this.rippleTime*1.4+i)*.12);}
+ update(dt:number){this.rippleTime+=dt;this.reflection?.update(this.rippleTime);for(let i=0;i<this.ripples.length;i++)this.ripples[i].scale.x=(.5+Math.sin(this.rippleTime*1.4+i)*.12);}
 }
