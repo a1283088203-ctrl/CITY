@@ -14,18 +14,27 @@ export class BoundaryPass extends ShaderPass{
     uniform vec2 texel,cameraRange,fogRange;
     uniform vec3 environment;uniform float illumination;varying vec2 vUv;
     float edgeLuma(vec3 c){return dot(c,vec3(.2126,.7152,.0722));}
+    bool isWindow(vec4 c){return abs(c.a-.25)<.015;}
     float depthAt(vec2 uv){float d=texture2D(tDepth,uv).x;return cameraRange.x*cameraRange.y/(cameraRange.y-d*(cameraRange.y-cameraRange.x));}
     void main(){
      vec4 source=texture2D(tDiffuse,vUv);float raw=texture2D(tDepth,vUv).x;
      if(raw>.99999){gl_FragColor=source;return;}
+     if(isWindow(source)){gl_FragColor=vec4(source.rgb,1.);return;}
      float z=depthAt(vUv);vec2 dx=vec2(texel.x,0.),dy=vec2(0.,texel.y);
+     vec4 leftColor=texture2D(tDiffuse,vUv-dx),rightColor=texture2D(tDiffuse,vUv+dx);
+     vec4 bottomColor=texture2D(tDiffuse,vUv-dy),topColor=texture2D(tDiffuse,vUv+dy);
      float l=depthAt(vUv-dx),r=depthAt(vUv+dx),b=depthAt(vUv-dy),t=depthAt(vUv+dy);
+     // Exclude both the glass and its wall-side border from edge detection.
+     if(isWindow(leftColor)){leftColor=source;l=z;}
+     if(isWindow(rightColor)){rightColor=source;r=z;}
+     if(isWindow(bottomColor)){bottomColor=source;b=z;}
+     if(isWindow(topColor)){topColor=source;t=z;}
      // Second differences reject smoothly sloping ground. Positive curvature
      // keeps silhouettes on the object side instead of drawing an outer halo.
      float curvature=max(max(l+r-2.*z,b+t-2.*z),0.);
      float geometryEdge=smoothstep(.025+z*.0015,.16+z*.009,curvature);
-     vec3 cl=texture2D(tDiffuse,vUv-dx).rgb,cr=texture2D(tDiffuse,vUv+dx).rgb;
-     vec3 cb=texture2D(tDiffuse,vUv-dy).rgb,ct=texture2D(tDiffuse,vUv+dy).rgb;
+     vec3 cl=leftColor.rgb,cr=rightColor.rgb;
+     vec3 cb=bottomColor.rgb,ct=topColor.rgb;
      float contrast=max(max(length(source.rgb-cl),length(source.rgb-cr)),max(length(source.rgb-cb),length(source.rgb-ct)));
      float colorEdge=smoothstep(.02,.10,contrast)*(1.-smoothstep(.3,.75,contrast))*.42;
      float similar=1.-smoothstep(.04,.3,contrast);
