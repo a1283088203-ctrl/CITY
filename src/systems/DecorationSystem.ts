@@ -2,6 +2,7 @@ import * as T from 'three';
 import {box,litBox} from '../utils/mesh';
 import {RoadSystem} from './RoadSystem';
 import {seeded} from '../utils/math';
+import {voxelTree} from '../utils/tree';
 import {key,toWorld,neighbors} from '../utils/grid';
 import type {Building} from '../entities/Building';
 export class DecorationSystem{
@@ -14,7 +15,7 @@ export class DecorationSystem{
  for(let x=1;x<15;x++)for(let z=1;z<15;z++){const p={x,z};if(roads.blocked.has(key(p))||roads.roads.has(key(p)))continue;const w=toWorld(p),near=neighbors(p).some(n=>roads.roads.has(key(n)));
  const rank=rand(),choice=rand(),k=key(p);if(this.entries.has(k)||roads.terrain?.blocked.has(k))continue;
  const mesh=new T.Group();let kind='';
- if(rank<green*.46){kind='tree';box(mesh,.13,.65,.13,w.x,.32,w.z,0x806850);box(mesh,.68,.6,.65,w.x,.88,w.z,0x719b71);box(mesh,.47,.3,.46,w.x,1.25,w.z,0x97b97d);}
+ if(rank<green*.46){kind='tree';voxelTree(mesh,w.x,w.z,((roads.terrain?.seed??824)^Math.imul(x+1,73856093)^Math.imul(z+1,19349663))>>>0);}
  else if(near&&choice<(stage===0?.12:.32)){kind='lamp';box(mesh,.07,1.1,.07,w.x,.55,w.z,0x426269);litBox(mesh,.32,.1,.21,w.x,1.12,w.z,0xffdc98,0xffd38b,2.8);}
  else if(near&&stage>=3&&choice<.65){kind='screen';box(mesh,.1,1.45,.1,w.x,.72,w.z,0x496270);box(mesh,1,.72,.14,w.x,1.17,w.z,0x475064);litBox(mesh,.84,.5,.025,w.x,1.17,w.z+.085,0x769492,stage===4?0xfc70c4:0x75eadf,2.7);for(let i=0;i<3;i++)litBox(mesh,.5,.035,.03,w.x,1.02+i*.13,w.z+.11,0xe1d4a7,0xfff1b5,2.4);}
  else if(near&&stage>=4&&choice<.8){kind='industry';box(mesh,.75,.65,.7,w.x,.325,w.z,0x63717a);box(mesh,.15,1.1,.15,w.x+.25,.6,w.z,0x8796a3);litBox(mesh,.55,.06,.05,w.x,.52,w.z+.36,0xe0bb79,0xffbc65,2.4);}
