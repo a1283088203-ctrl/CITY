@@ -35,9 +35,10 @@ export class CityScene{
  }
  setStreetLights(positions:T.Vector3[],night:number){this.streetLights.forEach((light,i)=>{light.intensity=positions[i]?night*2.4:0;if(positions[i])light.position.copy(positions[i]);});}
  render(camera:T.PerspectiveCamera){if(this.composer)this.composer.render();else this.renderer.render(this.scene,camera);}
- private renderScale(w:number,h:number){return matchMedia('(pointer: coarse)').matches?Math.min(1.5,Math.max(1,devicePixelRatio||1),Math.sqrt(1200000/Math.max(1,w*h))):.5;}
+ private renderScale(w:number,h:number){return matchMedia('(pointer: coarse)').matches?Math.min(.9,Math.sqrt(700000/Math.max(1,w*h))):.5;}
  resize(w:number,h:number){const scale=this.renderScale(w,h);this.renderer.setPixelRatio(scale);this.renderer.setSize(w,h);this.composer?.setPixelRatio(scale);this.composer?.setSize(w,h);}
 }
+
 
 
 
