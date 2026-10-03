@@ -23,23 +23,23 @@ export class BoundaryPass extends ShaderPass{
      // Second differences reject smoothly sloping ground. Positive curvature
      // keeps silhouettes on the object side instead of drawing an outer halo.
      float curvature=max(max(l+r-2.*z,b+t-2.*z),0.);
-     float geometryEdge=smoothstep(.04+z*.004,.25+z*.022,curvature);
+     float geometryEdge=smoothstep(.025+z*.0015,.16+z*.009,curvature);
      vec3 cl=texture2D(tDiffuse,vUv-dx).rgb,cr=texture2D(tDiffuse,vUv+dx).rgb;
      vec3 cb=texture2D(tDiffuse,vUv-dy).rgb,ct=texture2D(tDiffuse,vUv+dy).rgb;
      float contrast=max(max(length(source.rgb-cl),length(source.rgb-cr)),max(length(source.rgb-cb),length(source.rgb-ct)));
-     float colorEdge=smoothstep(.025,.13,contrast)*(1.-smoothstep(.25,.65,contrast))*.3;
+     float colorEdge=smoothstep(.02,.10,contrast)*(1.-smoothstep(.3,.75,contrast))*.42;
      float similar=1.-smoothstep(.04,.3,contrast);
      // Already-lit surfaces and nearby emissive windows/lamps need less separation.
      float localLight=max(edgeLuma(source.rgb),max(max(edgeLuma(cl),edgeLuma(cr)),max(edgeLuma(cb),edgeLuma(ct))));
-     float lit=1.-smoothstep(.16+illumination*.13,.65+illumination*.22,localLight)*.88;
-     float distanceFade=1.-smoothstep(22.,110.,z);
+     float lit=1.-smoothstep(.16+illumination*.13,.65+illumination*.22,localLight)*.68;
+     float distanceFade=1.-smoothstep(40.,125.,z);
      float fogFade=1.-smoothstep(fogRange.x,fogRange.y,z);
-     float strength=max(geometryEdge*(.65+.35*similar),colorEdge)*lit*distanceFade*fogFade*.20;
+     float strength=max(geometryEdge*(.65+.35*similar),colorEdge)*lit*distanceFade*fogFade*.54;
      float bright=illumination/(illumination+1.5);
      vec3 envHue=environment/max(edgeLuma(environment),.001);
      float objectLight=edgeLuma(source.rgb);
-     vec3 darkEnvironment=envHue*min(objectLight*.68,.15);
-     vec3 edgeColor=mix(source.rgb*(.68-.24*bright),darkEnvironment,.58-.28*bright);
+     vec3 darkEnvironment=envHue*min(objectLight*.48,.11);
+     vec3 edgeColor=mix(source.rgb*(.48-.24*bright),darkEnvironment,.58-.28*bright);
      gl_FragColor=vec4(mix(source.rgb,edgeColor,strength),source.a);
     }`
   });
@@ -57,5 +57,7 @@ export class BoundaryPass extends ShaderPass{
   this.uniforms.fogRange.value.set(fog.near,fog.far);
  }
 }
+
+
 
 

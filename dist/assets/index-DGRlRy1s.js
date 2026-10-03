@@ -3851,23 +3851,23 @@ void main() {
      // Second differences reject smoothly sloping ground. Positive curvature
      // keeps silhouettes on the object side instead of drawing an outer halo.
      float curvature=max(max(l+r-2.*z,b+t-2.*z),0.);
-     float geometryEdge=smoothstep(.04+z*.004,.25+z*.022,curvature);
+     float geometryEdge=smoothstep(.025+z*.0015,.16+z*.009,curvature);
      vec3 cl=texture2D(tDiffuse,vUv-dx).rgb,cr=texture2D(tDiffuse,vUv+dx).rgb;
      vec3 cb=texture2D(tDiffuse,vUv-dy).rgb,ct=texture2D(tDiffuse,vUv+dy).rgb;
      float contrast=max(max(length(source.rgb-cl),length(source.rgb-cr)),max(length(source.rgb-cb),length(source.rgb-ct)));
-     float colorEdge=smoothstep(.025,.13,contrast)*(1.-smoothstep(.25,.65,contrast))*.3;
+     float colorEdge=smoothstep(.02,.10,contrast)*(1.-smoothstep(.3,.75,contrast))*.42;
      float similar=1.-smoothstep(.04,.3,contrast);
      // Already-lit surfaces and nearby emissive windows/lamps need less separation.
      float localLight=max(edgeLuma(source.rgb),max(max(edgeLuma(cl),edgeLuma(cr)),max(edgeLuma(cb),edgeLuma(ct))));
-     float lit=1.-smoothstep(.16+illumination*.13,.65+illumination*.22,localLight)*.88;
-     float distanceFade=1.-smoothstep(22.,110.,z);
+     float lit=1.-smoothstep(.16+illumination*.13,.65+illumination*.22,localLight)*.68;
+     float distanceFade=1.-smoothstep(40.,125.,z);
      float fogFade=1.-smoothstep(fogRange.x,fogRange.y,z);
-     float strength=max(geometryEdge*(.65+.35*similar),colorEdge)*lit*distanceFade*fogFade*.20;
+     float strength=max(geometryEdge*(.65+.35*similar),colorEdge)*lit*distanceFade*fogFade*.54;
      float bright=illumination/(illumination+1.5);
      vec3 envHue=environment/max(edgeLuma(environment),.001);
      float objectLight=edgeLuma(source.rgb);
-     vec3 darkEnvironment=envHue*min(objectLight*.68,.15);
-     vec3 edgeColor=mix(source.rgb*(.68-.24*bright),darkEnvironment,.58-.28*bright);
+     vec3 darkEnvironment=envHue*min(objectLight*.48,.11);
+     vec3 edgeColor=mix(source.rgb*(.48-.24*bright),darkEnvironment,.58-.28*bright);
      gl_FragColor=vec4(mix(source.rgb,edgeColor,strength),source.a);
     }`}),this.camera=A,this.material.depthTest=!1,this.material.depthWrite=!1}skyContribution=new YA;render(A,I,g,C,Q){this.uniforms.tDepth.value=g.depthTexture,this.uniforms.texel.value.set(1/g.width,1/g.height),this.uniforms.cameraRange.value.set(this.camera.near,this.camera.far),super.render(A,I,g,C,Q)}update(A,I,g,C){this.uniforms.environment.value.copy(A.color).multiplyScalar(A.intensity).add(this.skyContribution.copy(g).multiplyScalar(.8)),this.uniforms.illumination.value=A.intensity+I.intensity*.45,this.uniforms.fogRange.value.set(C.near,C.far)}}const ac=new HC(1,1,1),ye=new Map,$i=new Map,Ao=new Map,hc=typeof matchMedia=="function"&&matchMedia("(pointer: coarse)").matches?8:32,HD=B=>Math.random()>B?0:Math.random()<.22?1.4+Math.random()*.4:.35+Math.random()*.55;let uo=0;function oA(B,A,I,g,C,Q,E,i){let o=ye.get(i);o||(o=new CE({color:i}),ye.set(i,o));const t=new pI(ac,o);return t.scale.set(A,I,g),t.position.set(C,Q,E),t.castShadow=!0,t.receiveShadow=!0,B.add(t),t}function wg(B,A,I,g,C,Q,E,i,o,t=2){const e=oA(B,A,I,g,C,Q,E,i),D=`${i}:${o}:${t}`;let a=$i.get(D);return a||(a={material:new CE({color:i,emissive:o,emissiveIntensity:t*uo}),intensity:t},$i.set(D,a)),e.material=a.material,e}function FQ(B,A,I,g,C,Q,E,i,o,t=2,e=.65){const D=oA(B,A,I,g,C,Q,E,i),a=`${o}:${t}:${e}:${Math.floor(Math.random()*hc)}`;let h=Ao.get(a);if(!h){const S=HD(e);h={material:new CE({color:i,emissive:o,emissiveIntensity:t*uo*S}),intensity:t,brightness:S,target:S,remaining:3+Math.random()*15,litChance:e},Ao.set(a,h)}return D.material=h.material,D.userData.windowLight=!0,D.castShadow=!1,D}function nc(B,A=0){uo=B;for(const I of $i.values())I.material.emissiveIntensity=B*I.intensity;for(const I of Ao.values())B>.01&&(I.remaining-=A,I.remaining<=0&&(I.target=HD(I.litChance),I.remaining=6+Math.random()*14),I.brightness+=(I.target-I.brightness)*(1-Math.exp(-Math.max(0,A)/1.8))),I.material.emissiveIntensity=B*I.intensity*I.brightness}const Io=[{name:"RURAL",label:"农村",population:0,green:.95,motto:"河边有风，家里有灯。",bloom:.1,queueLevel:2},{name:"TOWNSHIP",label:"乡镇",population:300,green:.72,motto:"老屋旁，新的街角正在生长。",bloom:.2,queueLevel:2},{name:"URBAN",label:"城区",population:1500,green:.48,motto:"更多窗口，更多归家的人。",bloom:.32,queueLevel:2},{name:"METRO",label:"都市",population:7e3,green:.24,motto:"灯火延长了这座城的一天。",bloom:.46,queueLevel:3},{name:"CYBERPUNK MEGACITY",label:"赛博朋克巨型城市",population:3e4,green:.08,motto:"城市不再需要睡眠。",bloom:.62,queueLevel:3}];function wc(B,A,I=Math.random){const g=Math.min(B,Math.max(2,A-1));return g<=2?I()<.6?1:2:1+Math.floor(I()*g)}class Sc{last=0;streak=0;reset(){this.last=0,this.streak=0}roll(A,I,g=Math.random){const C=Math.min(A,Math.max(2,I-1));let Q;if(C<=2){const E=this.last===1?this.streak>=2?.25:.45:this.last===2?this.streak>=2?.85:.75:.6;Q=g()<E?1:2}else Q=wc(A,I,g);return this.streak=Q===this.last?this.streak+1:1,this.last=Q,Q}}const mQ={name:"CopyShader",uniforms:{tDiffuse:{value:null},opacity:{value:1}},vertexShader:`
 
