@@ -35,12 +35,15 @@ export class BoundaryPass extends ShaderPass{
      float distanceFade=1.-smoothstep(40.,125.,z);
      float fogFade=1.-smoothstep(fogRange.x,fogRange.y,z);
      float strength=max(geometryEdge*(.65+.35*similar),colorEdge)*lit*distanceFade*fogFade*.54;
+     float building=1.-smoothstep(.01,.04,abs(source.a-.5));
+     strength=min(.96,strength*(1.+1.8*building));
      float bright=illumination/(illumination+1.5);
      vec3 envHue=environment/max(edgeLuma(environment),.001);
      float objectLight=edgeLuma(source.rgb);
      vec3 darkEnvironment=envHue*min(objectLight*.48,.11);
      vec3 edgeColor=mix(source.rgb*(.48-.24*bright),darkEnvironment,.58-.28*bright);
-     gl_FragColor=vec4(mix(source.rgb,edgeColor,strength),source.a);
+     edgeColor*=1.-building*.35;
+     gl_FragColor=vec4(mix(source.rgb,edgeColor,strength),1.);
     }`
   });
   this.material.depthTest=false;this.material.depthWrite=false;
@@ -57,6 +60,8 @@ export class BoundaryPass extends ShaderPass{
   this.uniforms.fogRange.value.set(fog.near,fog.far);
  }
 }
+
+
 
 
 

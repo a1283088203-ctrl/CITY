@@ -1,6 +1,14 @@
 import * as T from 'three';
 const geometry=new T.BoxGeometry(1,1,1);
 const materials=new Map<number,T.MeshLambertMaterial>();
+const buildingMaterials=new Map<T.MeshLambertMaterial,T.MeshLambertMaterial>();
+/** Reserve opaque building alpha as a boundary-strength tag; no extra geometry pass. */
+export function tagBuildingMaterial(source:T.Material){
+ if(!(source instanceof T.MeshLambertMaterial))return source;
+ let tagged=buildingMaterials.get(source);
+ if(!tagged){tagged=source.clone();tagged.onBeforeCompile=shader=>{shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>','#include <opaque_fragment>\n gl_FragColor.a = 0.5;');};tagged.customProgramCacheKey=()=> 'building-boundary-tag';buildingMaterials.set(source,tagged);}
+ return tagged;
+}
 const glowing=new Map<string,{material:T.MeshLambertMaterial;intensity:number}>();
 type WindowLight={material:T.MeshLambertMaterial;intensity:number;brightness:number;target:number;remaining:number;litChance:number};
 const windows=new Map<string,WindowLight>();
@@ -31,5 +39,6 @@ export function setNightLights(amount:number,dt=0){
    entry.brightness+=(entry.target-entry.brightness)*(1-Math.exp(-Math.max(0,dt)/1.8));}
   entry.material.emissiveIntensity=amount*entry.intensity*entry.brightness;
  }
+ for(const [source,tagged] of buildingMaterials)tagged.emissiveIntensity=source.emissiveIntensity;
 }
 export function disposeTree(root:T.Object3D){root.traverse(o=>{if(o instanceof T.Mesh && o.userData.owned){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});root.removeFromParent();}
