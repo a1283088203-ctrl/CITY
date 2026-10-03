@@ -10,9 +10,7 @@ export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  box(g,w,h,d,0,0,0,data.color);
  box(g,w+.1,.12,d+.1,0,-h/2+.1,0,0x668177);
  // Separate the roof and body top surfaces to prevent z-fighting.
- // Low roofs share a flush front/back with the stepped tiles. A tiny recessed
- // base previously created a thin self-shadow seam amplified by the outline.
- box(g,w+.12,.18,d+(l<=2?.2:.12),0,h/2+.09,0,data.roof);
+ box(g,w+.12,.18,d+.12,0,h/2+.09,0,data.roof);
  if(l<=2){for(let i=0;i<4;i++)box(g,w*(1-i*.2),.16,d+.2,0,h/2+.26+i*.16,0,data.roof);box(g,.18,.48,.22,w*.27,h/2+.65,0,0x8c776c);}
  const floors=Math.max(1,Math.floor(h/.65)),cols=Math.max(2,Math.floor(w/.55));
  for(let f=0;f<floors;f++)for(let c=0;c<cols;c++){
