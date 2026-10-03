@@ -1,3 +1,5 @@
+
+
 import * as T from 'three';
 import {CityScene} from '../scenes/CityScene';
 import {CameraController} from '../camera/CameraController';
@@ -11,7 +13,7 @@ import {VehicleSystem} from '../systems/VehicleSystem';
 import {DecorationSystem} from '../systems/DecorationSystem';
 import {ProgressionSystem} from '../systems/ProgressionSystem';
 import {PopulationSystem} from '../systems/PopulationSystem';
-import {BackgroundCitySystem} from '../systems/BackgroundCitySystem';
+
 import {EffectsSystem} from '../systems/EffectsSystem';
 import {UIManager} from '../systems/UIManager';
 import {WindSystem} from '../systems/WindSystem';
@@ -28,12 +30,12 @@ import {CITY} from '../data/cityConfig';
 import {BuildingQueue} from '../data/progression';
 import {clamp} from '../utils/math';
 export class Game{
- city:CityScene;camera:CameraController;physics=new PhysicsSystem();buildings:BuildingSystem;merge:MergeSystem;paths=new PathfindingSystem();roads:RoadSystem;npcs:NPCSystem;vehicles:VehicleSystem;decorations:DecorationSystem;progress=new ProgressionSystem();population=new PopulationSystem();background:BackgroundCitySystem;effects:EffectsSystem;ui:UIManager;wind:WindSystem;terrain:TerrainSystem;time=new TimeOfDaySystem();sound=new SoundSystem();score=new ScoreSystem();
+ city:CityScene;camera:CameraController;physics=new PhysicsSystem();buildings:BuildingSystem;merge:MergeSystem;paths=new PathfindingSystem();roads:RoadSystem;npcs:NPCSystem;vehicles:VehicleSystem;decorations:DecorationSystem;progress=new ProgressionSystem();population=new PopulationSystem();effects:EffectsSystem;ui:UIManager;wind:WindSystem;terrain:TerrainSystem;time=new TimeOfDaySystem();sound=new SoundSystem();score=new ScoreSystem();
  demolition:DemolitionSystem;private paused=false;private missileMode=false;
  private touch?:TouchInputSystem;
  private buildingQueue=new BuildingQueue();private currentVariant=0;private nextVariant=0;
  private ghost!:T.Group;private marker:T.Mesh;private current=1;private next=1;private yaw=0;private x=0;private z=0;private dropY=5;private cooldown=0;private elapsed=0;private accumulator=0;private roadTimer=0;private warning=0;private over=false;private last=0;private pointerDown:{x:number;y:number}|null=null;private dragDistance=0;
- constructor(parent:HTMLElement){this.city=new CityScene(parent);this.camera=new CameraController(this.city.renderer.domElement);this.city.enablePostProcessing(this.camera.camera);this.buildings=new BuildingSystem(this.city.scene,this.physics);this.roads=new RoadSystem(this.city.scene,this.paths);this.npcs=new NPCSystem(this.city.scene,this.roads,this.paths);this.vehicles=new VehicleSystem(this.city.scene,this.roads,this.paths,true);this.decorations=new DecorationSystem(this.city.scene);this.background=new BackgroundCitySystem(this.city.scene);this.effects=new EffectsSystem(this.city.scene);this.ui=new UIManager(parent);this.wind=new WindSystem(this.city.scene);this.terrain=new TerrainSystem(this.city.scene);this.roads.terrain=this.terrain;this.wind.onChange=state=>{if(state==='STRONG_WIND'){this.ui.notify('STRONG WIND! · 高处建筑请注意稳固');this.sound.warning();}};
+ constructor(parent:HTMLElement){this.city=new CityScene(parent);this.camera=new CameraController(this.city.renderer.domElement);this.city.enablePostProcessing(this.camera.camera);this.buildings=new BuildingSystem(this.city.scene,this.physics);this.roads=new RoadSystem(this.city.scene,this.paths);this.npcs=new NPCSystem(this.city.scene,this.roads,this.paths);this.vehicles=new VehicleSystem(this.city.scene,this.roads,this.paths,true);this.decorations=new DecorationSystem(this.city.scene);this.effects=new EffectsSystem(this.city.scene);this.ui=new UIManager(parent);this.wind=new WindSystem(this.city.scene);this.terrain=new TerrainSystem(this.city.scene);this.roads.terrain=this.terrain;this.wind.onChange=state=>{if(state==='STRONG_WIND'){this.ui.notify('STRONG WIND! · 高处建筑请注意稳固');this.sound.warning();}};
  this.merge=new MergeSystem(this.buildings,(level,p)=>{this.progress.update(level);this.effects.burst(p);this.sound.merge(level);this.camera.pulse();this.ui.notify(level===8?'UTOPIA COMPLETED · CAPACITY +100,000':`${level<5?'MERGED':'HOUSING OPTIMIZED'} · ${buildingData(level).label} · ${buildingData(level).population.toLocaleString()} RESIDENTS`);if(level===8)this.camera.expand();});
  this.buildings.onCollapse=b=>{this.effects.collapse(b);this.sound.collapse();this.camera.pulse();this.roadTimer=1;};
  this.demolition=new DemolitionSystem(this.city.scene,this.buildings,b=>{this.effects.collapse(b);this.effects.burst(b.mesh.position.clone());this.sound.collapse();this.camera.pulse();this.roadTimer=1;this.ui.notify("DEMOLISHED! · 已拆除");});
@@ -41,7 +43,7 @@ export class Game{
  this.marker=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({color:0xf9e7b0,transparent:true,opacity:.65,side:T.DoubleSide}));this.marker.rotation.x=-Math.PI/2;this.marker.position.y=.15;this.city.scene.add(this.marker);
  }
  async init(){await this.physics.init();this.ui.bind(()=>this.drop(),()=>this.rotate(1),()=>this.restart());this.ui.bindTools(()=>this.setPaused(!this.paused),()=>this.setPaused(false),()=>this.toggleMissile());this.bindInput();document.addEventListener('pointerdown',()=>void this.sound.unlock(),{capture:true});document.addEventListener('keydown',()=>void this.sound.unlock(),{capture:true});const soundButton=document.getElementById('sound')!;const soundLabel=()=>{soundButton.textContent=this.sound.enabled?'♪ 音效 开':'♪ 音效 关';soundButton.setAttribute('aria-pressed',String(this.sound.enabled));};soundLabel();soundButton.addEventListener('click',()=>{this.sound.toggle();soundLabel();});this.restart();this.resize();window.addEventListener('resize',()=>this.resize());window.visualViewport?.addEventListener('resize',()=>this.resize());window.visualViewport?.addEventListener('scroll',()=>this.resize());document.addEventListener('visibilitychange',()=>{this.last=0;this.accumulator=0;});requestAnimationFrame(this.frame);}
- private restart(){this.setPaused(false);this.missileMode=false;this.demolition.reset();this.ui.tool(false,0);this.touch?.reset();this.ui.resetScore();this.sound.restart();this.buildings.clear();this.physics.reset();this.merge.reset();this.effects.clear();this.wind.reset();this.time.reset();this.terrain.generate();this.roads.reset();this.npcs.reset();this.vehicles.reset();this.decorations.reset();this.progress.reset();this.buildings.era=0;this.background.reset();this.camera.reset();this.buildingQueue.reset();this.current=this.rollNext();this.next=this.rollNext();this.currentVariant=randomBuildingVariant();this.nextVariant=randomBuildingVariant();this.yaw=0;this.x=0;this.z=0;this.cooldown=0;this.warning=0;this.over=false;this.accumulator=0;this.ui.end(false);this.ui.warning(0);
+ private restart(){this.setPaused(false);this.missileMode=false;this.demolition.reset();this.ui.tool(false,0);this.touch?.reset();this.ui.resetScore();this.sound.restart();this.buildings.clear();this.physics.reset();this.merge.reset();this.effects.clear();this.wind.reset();this.time.reset();this.terrain.generate();this.roads.reset();this.npcs.reset();this.vehicles.reset();this.decorations.reset();this.progress.reset();this.buildings.era=0;this.camera.reset();this.buildingQueue.reset();this.current=this.rollNext();this.next=this.rollNext();this.currentVariant=randomBuildingVariant();this.nextVariant=randomBuildingVariant();this.yaw=0;this.x=0;this.z=0;this.cooldown=0;this.warning=0;this.over=false;this.accumulator=0;this.ui.end(false);this.ui.warning(0);
  // Three modest households make the initial district alive while leaving the center open.
  const occupied:{x:number;z:number}[]=[];for(const level of [1,1,2]){const d=buildingData(level),plot=this.terrain.findPlot(d.width,d.depth,occupied);if(plot){occupied.push(plot);const b=this.buildings.spawn(level,plot.x,d.height/2+.05,plot.z);b.age=1;}}const initial=buildingData(this.current),start=this.terrain.findPlot(initial.width,initial.depth,occupied);if(start){this.x=start.x;this.z=start.z;}
  this.roads.rebuild(this.buildings.buildings,true);this.preview();this.ui.notify('WELCOME HOME · 将同级建筑叠在一起，等待合成');}
@@ -80,12 +82,17 @@ export class Game{
  }
  private frame=(now:number)=>{const dt=this.last?Math.min((now-this.last)/1000,.1):0;this.last=now;if(this.paused){this.city.render(this.camera.camera);requestAnimationFrame(this.frame);return;}this.demolition.update(dt);this.ui.tool(this.missileMode,this.demolition.cooldown);this.elapsed+=dt;this.cooldown-=dt;this.accumulator+=dt;
  while(this.accumulator>=CITY.step){this.wind.step(CITY.step,this.buildings.buildings,this.time.night);this.physics.step();this.buildings.update(CITY.step);if(!this.over)this.merge.update(CITY.step);this.accumulator-=CITY.step;}
- this.time.update(dt);this.city.applyLighting(this.time,dt);this.population.update(this.buildings.buildings);if(this.progress.update(this.progress.maxLevel,this.population.population)){this.ui.notify(`${this.progress.stage.name} UNLOCKED!`);this.sound.upgrade();}this.city.setStage(this.progress.index);this.buildings.era=this.progress.index;this.background.update(this.progress.index,dt);this.roadTimer+=dt;if(this.roadTimer>.8){this.roadTimer=0;this.roads.rebuild(this.buildings.buildings,false,this.progress.index);}
+ this.time.update(dt);this.city.applyLighting(this.time,dt);this.population.update(this.buildings.buildings);if(this.progress.update(this.progress.maxLevel,this.population.population)){this.ui.notify(`${this.progress.stage.name} UNLOCKED!`);this.sound.upgrade();}this.city.setStage(this.progress.index);this.buildings.era=this.progress.index;this.roadTimer+=dt;if(this.roadTimer>.8){this.roadTimer=0;this.roads.rebuild(this.buildings.buildings,false,this.progress.index);}
  this.decorations.update(this.roads,this.progress.index,this.progress.stage.green,dt);this.decorations.updateArchitecture(this.buildings.buildings,this.progress.index);this.city.setStreetLights(this.decorations.lampPositions,this.time.night);this.npcs.update(dt,this.population.population,this.progress.index,this.time.activity(this.progress.index));this.vehicles.update(dt,this.population.population,this.progress.index,Math.max(.3,this.time.activity(this.progress.index)));this.effects.update(dt);this.wind.updateVisuals(dt);this.terrain.update(dt);this.ui.wind(this.wind);this.ui.time(this.time);this.positionPreview();
  const unsafe=this.buildings.buildings.some(b=>b.age>2&&new T.Box3().setFromObject(b.mesh).max.y>CITY.safetyHeight);this.warning=unsafe?this.warning+dt:Math.max(0,this.warning-dt*2);this.ui.warning(this.warning);this.sound.update(this.wind.strength,this.warning);if(this.warning>CITY.warningSeconds&&!this.over){this.over=true;this.ui.end(true);}
  this.score.update(this.buildings.buildings,this.roads);this.ui.score(this.score);this.ui.update(dt,this.progress,this.merge.count);this.camera.update(dt);this.city.render(this.camera.camera);requestAnimationFrame(this.frame);
  };
 }
+
+
+
+
+
 
 
 

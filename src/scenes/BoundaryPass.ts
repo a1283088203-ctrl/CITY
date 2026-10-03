@@ -36,14 +36,14 @@ export class BoundaryPass extends ShaderPass{
      vec3 cl=leftColor.rgb,cr=rightColor.rgb;
      vec3 cb=bottomColor.rgb,ct=topColor.rgb;
      float contrast=max(max(length(source.rgb-cl),length(source.rgb-cr)),max(length(source.rgb-cb),length(source.rgb-ct)));
-     float colorEdge=smoothstep(.02,.10,contrast)*(1.-smoothstep(.3,.75,contrast))*.42;
+     // Color-only transitions (cast shadows, lighting and surface colors) never create outlines.
      float similar=1.-smoothstep(.04,.3,contrast);
      // Already-lit surfaces and nearby emissive windows/lamps need less separation.
      float localLight=max(edgeLuma(source.rgb),max(max(edgeLuma(cl),edgeLuma(cr)),max(edgeLuma(cb),edgeLuma(ct))));
      float lit=1.-smoothstep(.16+illumination*.13,.65+illumination*.22,localLight)*.68;
      float distanceFade=1.-smoothstep(40.,125.,z);
      float fogFade=1.-smoothstep(fogRange.x,fogRange.y,z);
-     float strength=max(geometryEdge*(.65+.35*similar),colorEdge)*lit*distanceFade*fogFade*.54;
+     float strength=geometryEdge*(.65+.35*similar)*lit*distanceFade*fogFade*.54;
      float building=1.-smoothstep(.01,.04,abs(source.a-.5));
      strength=min(.96,strength*(1.+1.8*building));
      float bright=illumination/(illumination+1.5);
@@ -69,6 +69,7 @@ export class BoundaryPass extends ShaderPass{
   this.uniforms.fogRange.value.set(fog.near,fog.far);
  }
 }
+
 
 
 
