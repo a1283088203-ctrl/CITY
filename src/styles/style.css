@@ -38,3 +38,9 @@ body.paused footer,body.paused .build-strip{visibility:hidden}
 }
 @media(max-width:360px){.score-footer{grid-template-columns:1fr 42px 42px 78px;padding:6px;gap:4px}.score-total strong{font-size:11px}.score-total .eyebrow{font-size:4px!important}}
 
+/* Canvas and HUD share the browser's visible area, including changing mobile bars. */
+html,body{overscroll-behavior:none}
+#app{position:fixed;left:var(--game-left,0px);top:var(--game-top,0px);width:var(--game-width,100vw);height:var(--game-height,100dvh);overflow:hidden}
+#app canvas{width:100%!important;height:100%!important}
+#ui{position:absolute}
+.pause-toggle,#pause-menu{position:absolute}
