@@ -11,3 +11,19 @@ export function rollBuildingLevel(queueLevel:number,maxLevel:number,random=Math.
  const max=Math.min(queueLevel,Math.max(2,maxLevel-1));
  return max<=2?(random()<.6?1:2):1+Math.floor(random()*max);
 }
+
+/** Soft repeat penalty: retain randomness without forcing an alternating queue. */
+export class BuildingQueue{
+ private last=0;private streak=0;
+ reset(){this.last=0;this.streak=0;}
+ roll(queueLevel:number,maxLevel:number,random=Math.random){
+  const max=Math.min(queueLevel,Math.max(2,maxLevel-1));
+  let level:number;
+  if(max<=2){
+   const chanceOfOne=this.last===1?(this.streak>=2?.25:.45):this.last===2?(this.streak>=2?.85:.75):.6;
+   level=random()<chanceOfOne?1:2;
+  }else level=rollBuildingLevel(queueLevel,maxLevel,random);
+  this.streak=level===this.last?this.streak+1:1;this.last=level;
+  return level;
+ }
+}

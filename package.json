@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "tsx tests/systems.test.ts && tsx tests/wind.test.ts && tsx tests/environment.test.ts && tsx tests/batching.test.ts"
+    "test": "tsx tests/systems.test.ts && tsx tests/wind.test.ts && tsx tests/environment.test.ts && tsx tests/batching.test.ts && tsx tests/queue.test.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
@@ -20,3 +20,4 @@
     "tsx": "4.20.6"
   }
 }
+
