@@ -51,7 +51,7 @@ export class BoundaryPass extends ShaderPass{
      float objectLight=edgeLuma(source.rgb);
      vec3 darkEnvironment=envHue*min(objectLight*.48,.11);
      vec3 edgeColor=mix(source.rgb*(.48-.24*bright),darkEnvironment,.58-.28*bright);
-     edgeColor*=1.-building*.35;
+     edgeColor*=1.-building*.675;
      gl_FragColor=vec4(mix(source.rgb,edgeColor,strength),1.);
     }`
   });
