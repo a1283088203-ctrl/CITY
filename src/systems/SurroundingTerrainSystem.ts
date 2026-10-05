@@ -1,3 +1,4 @@
+import {groundTexture,configureGroundTexture} from '../utils/groundTexture';
 import * as T from 'three';
 import {box} from '../utils/mesh';
 import {batchStatic,disposeBatches} from '../utils/batch';
@@ -31,7 +32,8 @@ export class SurroundingTerrainSystem{
    const channel=channels.get(z),water=channel!==undefined&&Math.abs(x-channel)<2.3,bank=channel!==undefined&&Math.abs(x-channel)<4.8;
    const hills=(Math.sin(x*.17+phase)+Math.cos(z*.13-phase)+2)*.35;
    const top=water?-.16:bank?0:Math.floor(hills*clamp((distance-3)/12,0,1)*4)/4;
-   add(3,2+top,3,x,top/2-1,z,water?0x67adb5:bank?0xccbe91:[0x9fb97d,0xaac38a,0x9bb581][Math.floor(random()*3)]);
+   const tile=add(3,2+top,3,x,top/2-1,z,water?0x67adb5:bank?0xccbe91:[0x9fb97d,0xaac38a,0x9bb581][Math.floor(random()*3)]);
+   if(!water)groundTexture(tile,bank?'dirt':'grass');
    if(!water&&!bank&&distance>3&&distance<25&&random()<.09){
     const px=x+(random()-.5),pz=z+(random()-.5);
     if(random()<.4){add(.7,.4,.6,px,top+.2,pz,0x8d9c85);}
@@ -44,14 +46,15 @@ export class SurroundingTerrainSystem{
    // A lone unbatched leaf still uses local positions; bake it just like the batches.
    if(foliage&&(o.position.lengthSq()>0||o.scale.x!==1)){o.updateMatrix();o.geometry.applyMatrix4(o.matrix);o.position.set(0,0,0);o.scale.set(1,1,1);}
    if([0x9fb97d,0xaac38a,0x9bb581,0x64865e,0x78986a].includes(material.color.getHex()))this.colors.push({material,green:material.color.clone(),dry:new T.Color(foliage?0xaa945b:0xc5b074)});
-   material.onBeforeCompile=shader=>{
+   configureGroundTexture(material);const groundHook=material.onBeforeCompile;
+   material.onBeforeCompile=(shader,renderer)=>{groundHook.call(material,shader,renderer);
    shader.vertexShader='varying vec2 sceneryXZ;\n'+shader.vertexShader;
    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nsceneryXZ=(modelMatrix*vec4(position,1.0)).xz;');
    if(foliage){shader.uniforms.sceneryDecay=this.decay;shader.vertexShader='uniform float sceneryDecay;attribute vec3 leafCenter;attribute float leafDelay;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed=leafCenter+(transformed-leafCenter)*(1.0-smoothstep(leafDelay,leafDelay+.55,sceneryDecay));');}
    shader.fragmentShader='varying vec2 sceneryXZ;\n'+shader.fragmentShader;
    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>','#include <opaque_fragment>\ngl_FragColor.a=.75;');
    shader.fragmentShader=shader.fragmentShader.replace('#include <fog_fragment>','#include <fog_fragment>\n#ifdef USE_FOG\ngl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,smoothstep(17.0,43.0,length(sceneryXZ)));\n#endif');
-  };material.customProgramCacheKey=()=> 'scenery-distance-fog-v2-'+foliage;o.material=material;this.materials.push(material);});
+  };material.customProgramCacheKey=()=> 'scenery-distance-fog-v3-'+foliage+'-'+(material.userData.groundKind??'plain');o.material=material;this.materials.push(material);});
  }
  update(dt:number,maxLevel:number){
   if(maxLevel>=7)this.drying=true;
