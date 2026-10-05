@@ -40,7 +40,7 @@ export class UIManager{
    this.scoreAnimations.get(id)?.cancel();
    if(value<previous){
     const element=document.getElementById(id)!,base=getComputedStyle(element).color;
-    const animation=element.animate([{color:'#ff736d',offset:0},{color:'#ff736d',offset:.25},{color:base,offset:.4},{color:'#ff736d',offset:.55},{color:'#ff736d',offset:.72},{color:base,offset:1}],{duration:900});
+    const animation=element.animate([{color:'#f4ebd0',offset:0},{color:'#f4ebd0',offset:.25},{color:base,offset:.4},{color:'#f4ebd0',offset:.55},{color:'#f4ebd0',offset:.72},{color:base,offset:1}],{duration:900});
     this.scoreAnimations.set(id,animation);animation.onfinish=()=>this.scoreAnimations.delete(id);
     if(id==='total-score'){
      const loss=document.getElementById('score-loss')!;this.scoreAnimations.get('score-loss')?.cancel();loss.textContent=`−${(previous-value).toLocaleString()}`;

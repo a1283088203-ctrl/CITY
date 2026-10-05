@@ -57,3 +57,7 @@ body.color-editing #pause-menu{background:transparent;pointer-events:none}body.c
 
 /* Instructions live inside the pause menu, on both input types. */
 .pause-panel{max-width:calc(100% - 24px);max-height:calc(100dvh - 32px);overflow-y:auto}.controls-help{margin-top:12px;text-align:left;font:13px QiuYeYuanTi,sans-serif}.controls-help summary{cursor:pointer;min-height:44px;padding:12px;border:1px solid #b6c09a;background:#365c48;color:#f4ebbb}.controls-help summary:focus-visible{outline:2px solid #ffd78c;outline-offset:2px}.pause-panel .controls{position:static;margin-top:10px;font-size:12px;line-height:1.9;text-align:left;text-shadow:none;max-width:290px;white-space:normal;pointer-events:auto}
+
+/* One warm ivory ink color across all game interface text and states. */
+:root{--ui-ink:#f4ebd0}
+#ui,#ui *,#ui button:hover,#ui button:active,#ui button:disabled,.loading,.error{color:var(--ui-ink)!important}
