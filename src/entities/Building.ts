@@ -1,10 +1,12 @@
 import {tagBuildingMaterial} from '../utils/mesh';
+import {buildingDoor,doorLayout} from './BuildingDoors';
+import {facadeWindow} from './BuildingWindows';
 import {addPreviewOutline} from '../utils/previewOutline';
 import * as T from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { buildingData, type BuildingData } from '../data/buildings';
 import {batchStatic} from '../utils/batch';
-import {box,litBox,windowBox} from '../utils/mesh';
+import {box,litBox} from '../utils/mesh';
 import {decorateResidence,randomBuildingVariant} from './BuildingDecorations';
 export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  const g=new T.Group(),{width:w,depth:d,height:h,level:l}=data;
@@ -14,16 +16,17 @@ export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  // Keep low roof fascia flush with the stepped tiles to avoid a thin shadow seam.
  box(g,w+.12,.18,d+(l<=2?.2:.12),0,h/2+.09,0,data.roof);
  if(l<=2){for(let i=0;i<4;i++)box(g,w*(1-i*.2),.16,d+.2,0,h/2+.26+i*.16,0,data.roof);box(g,.18,.48,.22,w*.27,h/2+.65,0,0x8c776c);}
+ const door=doorLayout(data,variant);
  const floors=Math.max(1,Math.floor(h/.65)),cols=Math.max(2,Math.floor(w/.55));
  for(let f=0;f<floors;f++)for(let c=0;c<cols;c++){
- const y=-h/2+.5+f*(h-.65)/Math.max(1,floors-1),x=(c-(cols-1)/2)*w/(cols+1),color=l>=6?(c%2?0xf4c2a6:0x8de4e4):0x446875;
+ const y=-h/2+.5+f*(h-.65)/Math.max(1,floors-1),x=(c-(cols-1)/2)*w/(cols+1);
  const emission=l<6?0xffc780:(c%2?0xffac8e:0x77eee0),litChance=l<=2?.3:l<=4?.45:.8;
- windowBox(g,.22,.28,.025,x,y,d/2+.02,0x446875,emission,l<3?1.7:2.5,litChance);
- windowBox(g,.025,.28,.22,w/2+.02,y,x*d/w,0x446875,emission,l<3?1.7:2.5,litChance);
- windowBox(g,.22,.28,.025,x,y,-d/2-.02,0x446875,emission,l<3?1.7:2.5,litChance);
- windowBox(g,.025,.28,.22,-w/2-.02,y,x*d/w,0x446875,emission,l<3?1.7:2.5,litChance);
+ if(!(Math.abs(x)<door.width/2+.17&&y-.16<-h/2+door.height+.1))facadeWindow(g,x,y,d/2+.02,false,l,variant,emission,litChance);
+ facadeWindow(g,w/2+.02,y,x*d/w,true,l,variant,emission,litChance);
+ facadeWindow(g,x,y,-d/2-.02,false,l,variant,emission,litChance);
+ facadeWindow(g,-w/2-.02,y,x*d/w,true,l,variant,emission,litChance);
  }
- box(g,.36,.56,.06,0,-h/2+.28,d/2+.06,0x385a61);
+ buildingDoor(g,data,variant);
  if(era>=1&&l>=2&&l<=4){box(g,w*.62,.08,.4,0,-h/2+.85,d/2+.16,0xc48163);litBox(g,w*.52,.18,.04,0,-h/2+1.08,d/2+.05,0xd8bf8f,0xffce94,1.7);}
  if(l>=3)box(g,w*.35,.3,d*.35,-w*.2,h/2+.33,0,0x829591);
  if(l>=5){box(g,.12,h*.8,.12,-w/2-.1,0,d/2,0xf2ca87);box(g,w+.2,.15,d+.2,0,h*.2,0,data.roof);}
