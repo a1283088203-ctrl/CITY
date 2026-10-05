@@ -35,7 +35,12 @@ export class CityScene{
   const angle=(time.hour-6)/24*Math.PI*2;this.sun.position.set(Math.cos(angle)*28,Math.max(9,Math.sin(angle)*35),18);
   setNightLights(time.night,dt);this.boundary?.update(this.ambient,this.sun,time.sky,this.scene.fog as T.Fog);
   this.bloomStage+=(STAGES[Math.max(0,this.stage)].bloom-this.bloomStage)*(1-Math.exp(-dt*.25));
-  if(this.bloom){this.bloom.strength=this.bloomStage*(.12+.88*time.night);this.bloom.radius=.12+this.bloomStage*.15;}
+  if(this.bloom){
+   // Daylight highlights need a visible baseline; keep the established night glow.
+   this.bloom.strength=T.MathUtils.lerp(.18+this.bloomStage*.55,this.bloomStage,time.night);
+   this.bloom.threshold=T.MathUtils.lerp(1.0,1.25,time.night);
+   this.bloom.radius=.12+this.bloomStage*.15;
+  }
  }
  setStreetLights(positions:T.Vector3[],night:number){this.streetLights.forEach((light,i)=>{light.intensity=positions[i]?night*2.4:0;if(positions[i])light.position.copy(positions[i]);});}
  render(camera:T.PerspectiveCamera){if(this.composer)this.composer.render();else this.renderer.render(this.scene,camera);}
