@@ -1,4 +1,4 @@
-import {groundTexture} from '../utils/groundTexture';
+import {groundTexture,resetGroundPalette} from '../utils/groundTexture';
 import * as T from 'three';
 import {SurroundingTerrainSystem} from './SurroundingTerrainSystem';
 import {batchStatic,disposeBatches} from '../utils/batch';
@@ -16,6 +16,7 @@ export class TerrainSystem{
  private surroundings:SurroundingTerrainSystem;
  constructor(scene:T.Scene){scene.add(this.group);this.surroundings=new SurroundingTerrainSystem(scene);}
  generate(seed=Math.floor(Math.random()*0xffffffff)){
+  resetGroundPalette();
   this.reflection?.dispose();this.seed=seed;this.version++;disposeBatches(this.group);this.group.clear();this.water.clear();this.blocked.clear();this.bridges.clear();this.banks.clear();this.ripples=[];this.rippleTime=0;
   const random=seeded(seed);let x=5+Math.floor(random()*5);this.bridgeRow=6+Math.floor(random()*4);
   for(let z=0;z<CITY.size;z++){

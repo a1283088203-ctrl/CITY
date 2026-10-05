@@ -3,7 +3,7 @@ import {box,litBox} from '../utils/mesh';
 import {RoadSystem} from './RoadSystem';
 import {seeded} from '../utils/math';
 import {voxelTree} from '../utils/tree';
-import {key,toWorld,neighbors} from '../utils/grid';
+import {key,toWorld,neighbors,fromKey} from '../utils/grid';
 import type {Building} from '../entities/Building';
 export class DecorationSystem{
  group=new T.Group();private last='';private entries=new Map<string,{mesh:T.Group;kind:string;rank:number}>();
@@ -21,6 +21,14 @@ export class DecorationSystem{
  else if(near&&stage>=4&&choice<.8){kind='industry';box(mesh,.75,.65,.7,w.x,.325,w.z,0x63717a);box(mesh,.15,1.1,.15,w.x+.25,.6,w.z,0x8796a3);litBox(mesh,.55,.06,.05,w.x,.52,w.z+.36,0xe0bb79,0xffbc65,2.4);}
  else if(near&&choice<.22){kind='bench';box(mesh,.65,.12,.25,w.x,.24,w.z,0xb9956b);box(mesh,.65,.22,.06,w.x,.4,w.z-.13,0xb9956b);}
  if(kind){for(const child of mesh.children){child.position.x-=w.x;child.position.z-=w.z;}mesh.position.set(w.x,0,w.z);this.entries.set(k,{mesh,kind,rank});this.group.add(mesh);}
+ }
+ // The backrest is at local -Z, so the open seat faces local +Z.
+ // Re-evaluate only when roads change, retaining the current side at junctions.
+ for(const [k,e] of this.entries){if(e.kind!=='bench')continue;
+  const cell=fromKey(k),adjacent=neighbors(cell).filter(n=>roads.roads.has(key(n)));
+  if(!adjacent.length){e.mesh.removeFromParent();this.entries.delete(k);continue;}
+  const target=adjacent.find(n=>key(n)===e.mesh.userData.facingRoad)??adjacent[(cell.x*7+cell.z*13)%adjacent.length];
+  e.mesh.rotation.y=Math.atan2(target.x-cell.x,target.z-cell.z);e.mesh.userData.facingRoad=key(target);
  }
  this.lampPositions=[...this.entries.values()].filter(e=>e.kind==='lamp').slice(0,2).map(e=>e.mesh.children[1].getWorldPosition(new T.Vector3()));
  }

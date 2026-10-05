@@ -1,4 +1,5 @@
 import {tagBuildingMaterial} from '../utils/mesh';
+import {addPreviewOutline} from '../utils/previewOutline';
 import * as T from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { buildingData, type BuildingData } from '../data/buildings';
@@ -30,6 +31,7 @@ export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  if(l>=7){box(g,w+1,.25,d+.5,0,h*.33,0,data.roof);box(g,.12,1.8,.12,0,h/2+.9,0,0x8fe7df);}
  decorateResidence(g,data,variant);
  if(ghost)g.traverse(o=>{if(o instanceof T.Mesh){o.material=(o.material as T.Material).clone();Object.assign(o.material,{transparent:true,opacity:.32,depthWrite:false});o.castShadow=false;o.userData.ghost=true;}});
+ if(ghost)addPreviewOutline(g,w,d);
  return g;
 }
 export class Building{
