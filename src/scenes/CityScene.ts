@@ -15,7 +15,7 @@ export class CityScene{
  skyGradient:SkyGradient;
  scene=new T.Scene();renderer:T.WebGLRenderer;sun=new T.DirectionalLight(0xffe2ba,2.5);ambient=new T.HemisphereLight(0xdff5ed,0x647557,2);private stage=0;
  colorGrade?:ColorGradePass;boundary?:BoundaryPass;composer?:EffectComposer;bloom?:UnrealBloomPass;private bloomStage=0;private streetLights=[new T.PointLight(0xffd7a1,0,4,2),new T.PointLight(0xffd7a1,0,4,2)];
- constructor(parent:HTMLElement){this.renderer=new T.WebGLRenderer({antialias:false,powerPreference:'high-performance'});this.renderer.setPixelRatio(matchMedia('(pointer: coarse)').matches?.65:.5);this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFShadowMap;this.renderer.setClearColor(0xc9deda);parent.append(this.renderer.domElement);
+ constructor(parent:HTMLElement){this.renderer=new T.WebGLRenderer({antialias:false,powerPreference:'high-performance'});this.renderer.setPixelRatio(this.pixelScale(innerWidth,innerHeight));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFShadowMap;this.renderer.setClearColor(0xc9deda);parent.append(this.renderer.domElement);
  this.scene.fog=new T.Fog(0xc9deda,70,160);this.scene.add(this.ambient,this.sun);this.sun.position.set(-15,30,18);this.sun.castShadow=true;const shadowSize=matchMedia('(pointer: coarse)').matches?1024:2048;this.sun.shadow.mapSize.set(shadowSize,shadowSize);Object.assign(this.sun.shadow.camera,{left:-23,right:23,top:23,bottom:-23,near:1,far:90});this.sun.shadow.bias=-.0003;this.sun.shadow.normalBias=.025;
  box(this.scene,24,1,24,0,-.85,0,0x9a9870);box(this.scene,24.6,.4,24.6,0,-1.2,0,0x557f78);box(this.scene,25,.18,25,0,-1.48,0,0x789a87);
  for(const s of [-1,1]){box(this.scene,24.5,.3,.25,0,.05,s*12.2,0xe3d7b8);box(this.scene,.25,.3,24.5,s*12.2,.05,0,0xe3d7b8);}
@@ -44,7 +44,9 @@ export class CityScene{
  }
  setStreetLights(positions:T.Vector3[],night:number){this.streetLights.forEach((light,i)=>{light.intensity=positions[i]?night*2.4:0;if(positions[i])light.position.copy(positions[i]);});}
  render(camera:T.PerspectiveCamera){if(this.composer)this.composer.render();else this.renderer.render(this.scene,camera);}
- resize(w:number,h:number){this.renderer.setSize(w,h);this.composer?.setSize(w,h);}
+ /** Keep the pixel-grain look on any screen: render scale is capped by an absolute buffer size, so fullscreen on large monitors never gets smoother than the intended grain. UI is DOM and stays crisp. */
+ private pixelScale(w:number,h:number){const coarse=matchMedia('(pointer: coarse)').matches;return Math.min(coarse?.65:.5,(coarse?1280:960)/w,(coarse?800:540)/h);}
+ resize(w:number,h:number){const scale=this.pixelScale(w,h);this.renderer.setPixelRatio(scale);this.renderer.setSize(w,h);if(this.composer){this.composer.setPixelRatio(scale);this.composer.setSize(w,h);}}
 }
 
 
