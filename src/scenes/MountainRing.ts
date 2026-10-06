@@ -33,9 +33,10 @@ export class MountainRing{
  update(fog:T.Color,sky:T.Color){
   // The outer scenery fades to exactly the fog color, so the ridge feet do too.
   this.haze.copy(fog);
-  const tint=this.tint.setHex(0x5f8a96).multiplyScalar((fog.r+fog.g+fog.b)/1.6);
-  this.far.copy(fog).lerp(tint,.12).multiplyScalar(.97).lerp(sky,.2);
-  this.mid.copy(fog).lerp(tint,.26).multiplyScalar(.9);
-  this.near.copy(fog).lerp(tint,.4).multiplyScalar(.82);
+  // A clean sky-blue tint, scaled to the fog's brightness so dusk and night stay in key; less darkening keeps it from greying out.
+  const tint=this.tint.setHex(0x7aa6d8).multiplyScalar((fog.r+fog.g+fog.b)/1.7);
+  this.far.copy(fog).lerp(sky,.3).lerp(tint,.16);
+  this.mid.copy(fog).lerp(sky,.15).lerp(tint,.32).multiplyScalar(.95);
+  this.near.copy(fog).lerp(tint,.46).multiplyScalar(.9);
  }
 }
