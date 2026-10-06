@@ -11,18 +11,25 @@ export class WindSystem{
  readonly lines:T.LineSegments;
  private positions=new Float32Array(WIND.lineCount*6);
  private streaks:{x:number;y:number;z:number;phase:number;length:number}[]=[];
+ readonly rain:T.LineSegments;private rainCount:number;private rainPositions:Float32Array;private drops:{x:number;y:number;z:number;speed:number;len:number}[]=[];private rainAmount=0;
  private rotation=new T.Quaternion();private point=new T.Vector3();private impulse=new T.Vector3();
  constructor(scene:T.Scene){
   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.BufferAttribute(this.positions,3).setUsage(T.DynamicDrawUsage));
   this.lines=new T.LineSegments(geometry,new T.LineBasicMaterial({color:0xe5fff4,transparent:true,opacity:.45,depthWrite:false}));
-  this.lines.frustumCulled=false;scene.add(this.lines);this.reset();
+  this.lines.frustumCulled=false;scene.add(this.lines);
+  this.rainCount=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches?200:WIND.rainCount;
+  this.rainPositions=new Float32Array(this.rainCount*6);
+  const rainGeometry=new T.BufferGeometry();rainGeometry.setAttribute('position',new T.BufferAttribute(this.rainPositions,3).setUsage(T.DynamicDrawUsage));
+  this.rain=new T.LineSegments(rainGeometry,new T.LineBasicMaterial({color:0xa9c6d4,transparent:true,opacity:0,depthWrite:false}));
+  this.rain.frustumCulled=false;this.rain.visible=false;scene.add(this.rain);
+  this.reset();
  }
  exposure(height:number){return Math.pow(clamp((height-WIND.startHeight)/(WIND.fullHeight-WIND.startHeight),0,1),2);}
  step(dt:number,buildings:Building[],night=0){
   this.time+=dt;this.remaining-=dt;
   if(this.remaining<=0){
    const choices=(Object.keys(WEATHER) as WindState[]).filter(s=>s!==this.state);
-   const weights=choices.map(s=>s==='STRONG_WIND'?1+(WIND.nightStrongWeight-1)*clamp(night,0,1):1);
+   const weights=choices.map(s=>s==='STRONG_WIND'?1+(WIND.nightStrongWeight-1)*clamp(night,0,1):s==='RAIN'?WIND.rainWeight:1);
    let roll=this.random()*weights.reduce((sum,w)=>sum+w,0),selected=choices[choices.length-1];
    for(let i=0;i<choices.length;i++){roll-=weights[i];if(roll<0){selected=choices[i];break;}}
    this.setWeather(selected);
@@ -66,8 +73,25 @@ export class WindSystem{
   this.lines.geometry.attributes.position.needsUpdate=true;
   (this.lines.material as T.LineBasicMaterial).opacity=Math.min(.65,this.strength*.55);
   this.lines.visible=this.strength>.008;
+  // Rain streaks drift with the wind and fade with weather transitions.
+  this.rainAmount+=((this.state==='RAIN'?1:0)-this.rainAmount)*(1-Math.exp(-Math.max(0,dt)*1.4));
+  this.rain.visible=this.rainAmount>.02;
+  if(this.rain.visible){
+   const driftX=this.direction.x*.35,driftZ=this.direction.z*.35;
+   for(let i=0;i<this.drops.length;i++){
+    const d=this.drops[i];d.y-=d.speed*dt;d.x+=driftX*d.speed*dt;d.z+=driftZ*d.speed*dt;
+    if(d.y<-.2){d.y=WIND.ceiling;d.x=Math.random()*44-22;d.z=Math.random()*44-22;}
+    if(d.x>22)d.x-=44;if(d.x< -22)d.x+=44;if(d.z>22)d.z-=44;if(d.z< -22)d.z+=44;
+    const at=i*6;
+    this.rainPositions[at]=d.x;this.rainPositions[at+1]=d.y;this.rainPositions[at+2]=d.z;
+    this.rainPositions[at+3]=d.x-driftX*d.len;this.rainPositions[at+4]=d.y+d.len;this.rainPositions[at+5]=d.z-driftZ*d.len;
+   }
+   this.rain.geometry.attributes.position.needsUpdate=true;
+   (this.rain.material as T.LineBasicMaterial).opacity=.55*this.rainAmount;
+  }
  }
  setWeather(state:WindState){this.state=state;this.stateStartStrength=this.strength;this.transition=0;const weather=WEATHER[state];this.remaining=weather.minDuration+this.random()*(weather.maxDuration-weather.minDuration);this.targetAngle=this.random()*Math.PI*2;this.onChange(state);}
- reset(seed=Math.floor(Math.random()*0xffffffff)){this.time=0;this.strength=0;this.random=seeded(seed);this.angle=.35;this.targetAngle=.35;this.stateStartStrength=0;this.transition=0;this.state='CALM';this.remaining=18+this.random()*15;this.direction.set(Math.cos(.35),0,Math.sin(.35));const random=this.random;this.streaks=Array.from({length:WIND.lineCount},()=>({x:random()*44-22,y:WIND.startHeight+1+random()*(WIND.ceiling-WIND.startHeight-1),z:random()*44-22,phase:random()*6.28,length:1+random()*2.7}));this.updateVisuals(0);}
- dispose(){this.lines.removeFromParent();this.lines.geometry.dispose();(this.lines.material as T.Material).dispose();}
+ reset(seed=Math.floor(Math.random()*0xffffffff)){this.time=0;this.strength=0;this.random=seeded(seed);this.angle=.35;this.targetAngle=.35;this.stateStartStrength=0;this.transition=0;this.state='CALM';this.remaining=18+this.random()*15;this.direction.set(Math.cos(.35),0,Math.sin(.35));const random=this.random;this.streaks=Array.from({length:WIND.lineCount},()=>({x:random()*44-22,y:WIND.startHeight+1+random()*(WIND.ceiling-WIND.startHeight-1),z:random()*44-22,phase:random()*6.28,length:1+random()*2.7}));
+ const rrandom=seeded(seed^0x9e3779);this.drops=Array.from({length:this.rainCount},()=>({x:rrandom()*44-22,y:rrandom()*WIND.ceiling,z:rrandom()*44-22,speed:8+rrandom()*4,len:.45+rrandom()*.5}));this.rainAmount=0;this.updateVisuals(0);}
+ dispose(){this.lines.removeFromParent();this.lines.geometry.dispose();(this.lines.material as T.Material).dispose();this.rain.removeFromParent();this.rain.geometry.dispose();(this.rain.material as T.Material).dispose();}
 }

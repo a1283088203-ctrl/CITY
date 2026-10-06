@@ -16,7 +16,7 @@ export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  // Separate the roof and body top surfaces to prevent z-fighting.
  // Keep low roof fascia flush with the stepped tiles to avoid a thin shadow seam.
  box(g,w+.12,.18,d+(l<=2?.2:.12),0,h/2+.09,0,data.roof);
- if(l<=2){for(let i=0;i<4;i++)box(g,w*(1-i*.2),.16,d+.2,0,h/2+.26+i*.16,0,data.roof);box(g,.18,.48,.22,w*.27,h/2+.65,0,0x8c776c);}
+ if(l<=2){const roof=new T.Group();roof.name='pitched-roof';g.add(roof);for(let i=0;i<4;i++)box(roof,w*(1-i*.2),.16,d+.2,0,h/2+.26+i*.16,0,data.roof);box(roof,.18,.48,.22,w*.27,h/2+.65,0,0x8c776c);}
  const door=doorLayout(data,variant);
  const floors=Math.max(1,Math.floor(h/.65)),cols=Math.max(2,Math.floor(w/.55));
  for(let f=0;f<floors;f++)for(let c=0;c<cols;c++){
@@ -40,8 +40,10 @@ export function buildingModel(data:BuildingData,ghost=false,era=0,variant=0){
  return g;
 }
 export class Building{
- age=0;stable=0;windAnchor=false;windReady=false;windSettleTime=0;previousVelocityY=0;impactCooldown=0;readonly data:BuildingData;readonly mesh:T.Group;readonly bounds=new T.Box3();readonly structuralBounds=new T.Box3();private localBounds=new T.Box3();private localStructure=new T.Box3();
- constructor(public id:number,public level:number,public body:RAPIER.RigidBody,public collider:RAPIER.Collider,public era=0,public readonly variant=randomBuildingVariant()){this.data=buildingData(level);this.mesh=buildingModel(this.data,false,era,variant);batchStatic(this.mesh);const decoration=this.mesh.getObjectByName('residential-decoration') as T.Group;batchStatic(decoration);const detail=this.mesh.getObjectByName('facade-detail') as T.Group;batchStatic(detail);this.mesh.traverse(o=>{o.layers.enable(1);if(o instanceof T.Mesh)o.material=Array.isArray(o.material)?o.material.map(tagBuildingMaterial):tagBuildingMaterial(o.material);});this.localBounds.setFromObject(this.mesh);for(const part of this.mesh.children)if(part!==decoration&&part!==detail)this.localStructure.expandByObject(part);this.sync();}
+ age=0;stable=0;windAnchor=false;windReady=false;windSettleTime=0;previousVelocityY=0;impactCooldown=0;roofCovered=false;readonly data:BuildingData;readonly mesh:T.Group;readonly bounds=new T.Box3();readonly structuralBounds=new T.Box3();private roofGroup?:T.Group;private localBounds=new T.Box3();private localStructure=new T.Box3();
+ constructor(public id:number,public level:number,public body:RAPIER.RigidBody,public collider:RAPIER.Collider,public era=0,public readonly variant=randomBuildingVariant()){this.data=buildingData(level);this.mesh=buildingModel(this.data,false,era,variant);batchStatic(this.mesh);const decoration=this.mesh.getObjectByName('residential-decoration') as T.Group;batchStatic(decoration);const detail=this.mesh.getObjectByName('facade-detail') as T.Group;batchStatic(detail);this.roofGroup=this.mesh.getObjectByName('pitched-roof') as T.Group|undefined;if(this.roofGroup)batchStatic(this.roofGroup);this.mesh.traverse(o=>{o.layers.enable(1);if(o instanceof T.Mesh)o.material=Array.isArray(o.material)?o.material.map(tagBuildingMaterial):tagBuildingMaterial(o.material);});this.localBounds.setFromObject(this.mesh);for(const part of this.mesh.children)if(part!==decoration&&part!==detail)this.localStructure.expandByObject(part);this.sync();}
+ /** Hide the pitched roof once another building rests on top, so stacked levels sit on a flat slab. */
+ setRoofCovered(covered:boolean){if(covered===this.roofCovered)return;this.roofCovered=covered;if(this.roofGroup)this.roofGroup.visible=!covered;}
  sync(){this.mesh.position.copy(this.body.translation());this.mesh.quaternion.copy(this.body.rotation());this.mesh.updateMatrix();this.bounds.copy(this.localBounds).applyMatrix4(this.mesh.matrix);this.structuralBounds.copy(this.localStructure).applyMatrix4(this.mesh.matrix);}
 }
 

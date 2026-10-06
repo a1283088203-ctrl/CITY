@@ -3,10 +3,10 @@ export type DayPhase='Morning'|'Day'|'Sunset'|'Night';
 const FRAMES=[
  {hour:0,sky:0x172943,sun:0xb6d3ff,ambient:0xa0b9d2,power:.42,fill:.85,night:1},
  {hour:5,sky:0x26374b,sun:0xf1b8b1,ambient:0xa3acb6,power:.4,fill:.65,night:1},
- {hour:7,sky:0x8dbce8,sun:0xffdac0,ambient:0xcce2dc,power:1.65,fill:1.35,night:.12},
- {hour:10,sky:0x7eb9ea,sun:0xffead0,ambient:0xdff3ef,power:2.1,fill:1.65,night:0},
- {hour:16+40/60,sky:0x86b9e4,sun:0xffddb0,ambient:0xdde8d8,power:2.05,fill:1.55,night:0},
- {hour:17.8,sky:0xc68e9d,sun:0xffac77,ambient:0xb5b3c8,power:1.15,fill:1.05,night:.52},
+ {hour:7,sky:0x8dbce8,sun:0xffdac0,ambient:0xcce2dc,power:2,fill:1.35,night:.12},
+ {hour:10,sky:0x7eb9ea,sun:0xffead0,ambient:0xdff3ef,power:2.5,fill:1.65,night:0},
+ {hour:16+40/60,sky:0x86b9e4,sun:0xffddb0,ambient:0xdde8d8,power:2.45,fill:1.55,night:0},
+ {hour:17.8,sky:0xc68e9d,sun:0xffac77,ambient:0xb5b3c8,power:1.35,fill:1.05,night:.52},
  {hour:18+50/60,sky:0x172943,sun:0xb6d3ff,ambient:0xa0b9d2,power:.42,fill:.85,night:1},
  {hour:24,sky:0x172943,sun:0xb6d3ff,ambient:0xa0b9d2,power:.42,fill:.85,night:1}
 ];

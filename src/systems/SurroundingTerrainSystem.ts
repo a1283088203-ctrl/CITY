@@ -7,13 +7,13 @@ import {fromKey,toWorld} from '../utils/grid';
 
 /** Visual scenery only: never added to physics or the buildable grid. */
 export class SurroundingTerrainSystem{
- readonly group=new T.Group();
+ readonly group=new T.Group();readonly waterTiles:[number,number][]=[];outerRipples:T.Mesh[]=[];
  private materials:T.Material[]=[];
  private decay={value:0};private drying=false;
  private colors:{material:T.MeshLambertMaterial;green:T.Color;dry:T.Color}[]=[];
  constructor(scene:T.Scene){this.group.name='surrounding-terrain';scene.add(this.group);}
  generate(seed:number,river:Set<string>){
-  disposeBatches(this.group);this.group.clear();this.materials.forEach(m=>m.dispose());this.materials=[];
+  disposeBatches(this.group);this.group.clear();this.materials.forEach(m=>m.dispose());this.materials=[];this.waterTiles.length=0;this.outerRipples=[];
   this.decay.value=0;this.drying=false;this.colors=[];
   const random=seeded(seed^0x51af37),phase=random()*Math.PI*2;
   const ends=[0,15].map(row=>{const cells=[...river].map(fromKey).filter(p=>p.z===row);return cells.reduce((n,p)=>n+toWorld(p).x,0)/Math.max(1,cells.length);});
@@ -33,6 +33,7 @@ export class SurroundingTerrainSystem{
    const hills=(Math.sin(x*.17+phase)+Math.cos(z*.13-phase)+2)*.35;
    const top=water?-.16:bank?0:Math.floor(hills*clamp((distance-3)/12,0,1)*4)/4;
    const tile=add(3,2+top,3,x,top/2-1,z,water?0x67adb5:bank?0xccbe91:[0x9fb97d,0xaac38a,0x9bb581][Math.floor(random()*3)]);
+   if(water)this.waterTiles.push([x,z]);
    if(!water)groundTexture(tile,bank?'dirt':'grass');
    if(!water&&!bank&&distance>3&&distance<25&&random()<.09){
     const px=x+(random()-.5),pz=z+(random()-.5);
@@ -40,7 +41,16 @@ export class SurroundingTerrainSystem{
     else{const h=.8+random()*.9;add(.18,h,.18,px,top+h/2,pz,0x786c48);leaf(1.1,.7,.9,px,top+h,pz,0x64865e);leaf(.65,.4,.65,px+.12,top+h+.45,pz,0x78986a);}
    }
   }
-  batchStatic(this.group);
+  // Random ripple strips scattered over the outer waterways, matching the inner river's style.
+  for(const [wx,wz] of this.waterTiles){
+   if(random()<.85){const n=1+Math.floor(random()*3);
+    for(let i=0;i<n;i++){
+     const r=box(this.group,.4+random()*.5,.014,.035,wx+(random()-.5)*2.1,-.151,wz+(random()-.5)*2.1,0xa4d9d5);
+     r.castShadow=false;this.outerRipples.push(r);
+    }
+   }
+  }
+  const still=new Set(this.outerRipples);batchStatic(this.group,m=>still.has(m));
   // Fade only scenery with world distance, so zooming out never hides the playable city.
   this.group.traverse(o=>{if(!(o instanceof T.Mesh))return;const material=(o.material as T.MeshLambertMaterial).clone();const foliage=!!o.geometry.getAttribute('leafCenter');
    // A lone unbatched leaf still uses local positions; bake it just like the batches.
@@ -53,7 +63,7 @@ export class SurroundingTerrainSystem{
    if(foliage){shader.uniforms.sceneryDecay=this.decay;shader.vertexShader='uniform float sceneryDecay;attribute vec3 leafCenter;attribute float leafDelay;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed=leafCenter+(transformed-leafCenter)*(1.0-smoothstep(leafDelay,leafDelay+.55,sceneryDecay));');}
    shader.fragmentShader='varying vec2 sceneryXZ;\n'+shader.fragmentShader;
    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>','#include <opaque_fragment>\ngl_FragColor.a=.75;');
-   shader.fragmentShader=shader.fragmentShader.replace('#include <fog_fragment>','#include <fog_fragment>\n#ifdef USE_FOG\ngl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,smoothstep(17.0,43.0,length(sceneryXZ)));\n#endif');
+   shader.fragmentShader=shader.fragmentShader.replace('#include <fog_fragment>','#include <fog_fragment>\n#ifdef USE_FOG\n{float sceneryFog=smoothstep(17.0,43.0,length(sceneryXZ));sceneryFog=floor(sceneryFog*6.+bayer4(gl_FragCoord.xy*.5))/6.;gl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,sceneryFog);}\n#endif');
   };material.customProgramCacheKey=()=> 'scenery-distance-fog-v3-'+foliage+'-'+(material.userData.groundKind??'plain');o.material=material;this.materials.push(material);});
  }
  update(dt:number,maxLevel:number){

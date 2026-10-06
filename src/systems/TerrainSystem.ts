@@ -10,14 +10,14 @@ import {key,toWorld,toCell,neighbors,fromKey,type Cell} from '../utils/grid';
 
 /** A visual voxel landscape and shared planning mask; existing ground physics stays intact. */
 export class TerrainSystem{
- group=new T.Group();water=new Set<string>();blocked=new Set<string>();bridges=new Set<string>();banks=new Set<string>();
+ group=new T.Group();water=new Set<string>();blocked=new Set<string>();bridges=new Set<string>();banks=new Set<string>();rocks=new Map<string,T.Group>();
  private reflection?:WaterReflection;
  seed=0;version=0;bridgeRow=8;private ripples:T.Mesh[]=[];private rippleTime=0;
  private surroundings:SurroundingTerrainSystem;
  constructor(scene:T.Scene){scene.add(this.group);this.surroundings=new SurroundingTerrainSystem(scene);}
  generate(seed=Math.floor(Math.random()*0xffffffff)){
   resetGroundPalette();
-  this.reflection?.dispose();this.seed=seed;this.version++;disposeBatches(this.group);this.group.clear();this.water.clear();this.blocked.clear();this.bridges.clear();this.banks.clear();this.ripples=[];this.rippleTime=0;
+  this.reflection?.dispose();this.seed=seed;this.version++;disposeBatches(this.group);this.group.clear();this.water.clear();this.blocked.clear();this.bridges.clear();this.banks.clear();this.rocks.clear();this.ripples=[];this.rippleTime=0;
   const random=seeded(seed);let x=5+Math.floor(random()*5);this.bridgeRow=6+Math.floor(random()*4);
   for(let z=0;z<CITY.size;z++){
    const previous=x;if(z%2===0)x=clamp(x+Math.floor(random()*3)-1,4,10);
@@ -33,12 +33,19 @@ export class TerrainSystem{
     const bank=this.banks.has(k),dirt=random()<.16;
     groundTexture(box(this.group,1.5,.34,1.5,w.x,-.17,w.z,bank?0xccbe91:dirt?0xb9ad82:[0x9fb97d,0xaac38a,0x9bb581][Math.floor(random()*3)]),bank||dirt?'dirt':'grass');
     if(bank&&random()<.55){box(this.group,.13,.34,.13,w.x+.48,.17,w.z+.42,0x638d68);box(this.group,.08,.46,.08,w.x+.32,.23,w.z+.5,0x7da475);}
-    if(cx>1&&cx<14&&z!==this.bridgeRow&&random()<.023){this.blocked.add(k);box(this.group,.7,.4,.6,w.x,.2,w.z,0x8d9c85);box(this.group,.44,.25,.4,w.x+.1,.48,w.z-.04,0xa9b29a);}
+    if(cx>1&&cx<14&&z!==this.bridgeRow&&random()<.023){this.blocked.add(k);const rock=new T.Group();box(rock,.7,.4,.6,w.x,.2,w.z,0x8d9c85);box(rock,.44,.25,.4,w.x+.1,.48,w.z-.04,0xa9b29a);this.group.add(rock);this.rocks.set(k,rock);}
    }
   }
-  const animated=new Set(this.ripples);batchStatic(this.group,m=>animated.has(m));this.reflection=new WaterReflection(this.water,this.bridges);this.group.add(this.reflection.surface);
-  this.surroundings.generate(seed,this.water);
+  this.surroundings.generate(seed,this.water);this.ripples.push(...this.surroundings.outerRipples);
+  const animated=new Set(this.ripples);for(const rock of this.rocks.values())rock.traverse(o=>{if(o instanceof T.Mesh)animated.add(o);});batchStatic(this.group,m=>animated.has(m));this.reflection=new WaterReflection(this.water,this.bridges,this.surroundings.waterTiles);this.group.add(this.reflection.surface);
  }
+ /** Rock lookup for the demolition missile: cell key plus blast center. */
+ rockAt(x:number,z:number){
+  for(const k of this.rocks.keys()){const p=toWorld(fromKey(k));if(Math.abs(p.x-x)<=.75&&Math.abs(p.z-z)<=.75)return {cell:k,position:new T.Vector3(p.x,.4,p.z)};}
+  return null;
+ }
+ /** Rocks share the global box geometry/materials, so removal is unlink-only. */
+ removeRock(cell:string){const rock=this.rocks.get(cell);if(!rock)return;rock.removeFromParent();this.rocks.delete(cell);this.blocked.delete(cell);}
  canPlace(x:number,z:number,width:number,depth:number,yaw=0){
   const w=Math.abs(Math.cos(yaw))*width+Math.abs(Math.sin(yaw))*depth,d=Math.abs(Math.sin(yaw))*width+Math.abs(Math.cos(yaw))*depth;
   const minX=x-w/2-.06,maxX=x+w/2+.06,minZ=z-d/2-.06,maxZ=z+d/2+.06;

@@ -15,7 +15,7 @@ export class DecorationSystem{
  for(let x=1;x<15;x++)for(let z=1;z<15;z++){const p={x,z};if(roads.blocked.has(key(p))||roads.roads.has(key(p)))continue;const w=toWorld(p),near=neighbors(p).some(n=>roads.roads.has(key(n)));
  const rank=rand(),choice=rand(),k=key(p);if(this.entries.has(k)||roads.terrain?.blocked.has(k))continue;
  const mesh=new T.Group();let kind='';
- if(rank<green*.46){kind='tree';voxelTree(mesh,w.x,w.z,((roads.terrain?.seed??824)^Math.imul(x+1,73856093)^Math.imul(z+1,19349663))>>>0);}
+ if(rank<green*.46){kind='tree';voxelTree(mesh,w.x,w.z,((roads.terrain?.seed??824)^Math.imul(x+1,73856093)^Math.imul(z+1,19349663))>>>0);mesh.userData.crown=mesh.getObjectByName('crown');mesh.userData.phase=((x*7+z*13)%17)/17*Math.PI*2;}
  else if(near&&choice<(stage===0?.12:.32)){kind='lamp';box(mesh,.07,1.1,.07,w.x,.55,w.z,0x426269);litBox(mesh,.32,.1,.21,w.x,1.12,w.z,0xffdc98,0xffd38b,2.8);}
  else if(near&&stage>=3&&choice<.65){kind='screen';box(mesh,.1,1.45,.1,w.x,.72,w.z,0x496270);box(mesh,1,.72,.14,w.x,1.17,w.z,0x475064);litBox(mesh,.84,.5,.025,w.x,1.17,w.z+.085,0x769492,stage===4?0xfc70c4:0x75eadf,2.7);for(let i=0;i<3;i++)litBox(mesh,.5,.035,.03,w.x,1.02+i*.13,w.z+.11,0xe1d4a7,0xfff1b5,2.4);}
  else if(near&&stage>=4&&choice<.8){kind='industry';box(mesh,.75,.65,.7,w.x,.325,w.z,0x63717a);box(mesh,.15,1.1,.15,w.x+.25,.6,w.z,0x8796a3);litBox(mesh,.55,.06,.05,w.x,.52,w.z+.36,0xe0bb79,0xffbc65,2.4);}
@@ -31,6 +31,19 @@ export class DecorationSystem{
   e.mesh.rotation.y=Math.atan2(target.x-cell.x,target.z-cell.z);e.mesh.userData.facingRoad=key(target);
  }
  this.lampPositions=[...this.entries.values()].filter(e=>e.kind==='lamp').slice(0,2).map(e=>e.mesh.children[1].getWorldPosition(new T.Vector3()));
+ }
+ /** Crown sway: a lean along the wind plus a per-tree flutter, pivoting at the trunk top. */
+ updateWind(time:number,wind:{strength:number;direction:T.Vector3}){
+  const lean=.02+wind.strength*.13;
+  for(const e of this.entries.values()){
+   if(e.kind!=='tree')continue;
+   const crown=e.mesh.userData.crown as T.Group|undefined;if(!crown)continue;
+   const phase=e.mesh.userData.phase as number;
+   const gust=.55+.45*Math.sin(time*1.4+phase),flutter=Math.sin(time*2.6+phase*1.7)*.014;
+   const tilt=lean*gust;
+   crown.rotation.x=wind.direction.z*tilt+Math.sin(time*2.1+phase)*flutter;
+   crown.rotation.z=-wind.direction.x*tilt+Math.cos(time*2.4+phase)*flutter;
+  }
  }
  updateArchitecture(buildings:Building[],stage:number){
   const used=new Set<string>();if(stage>=3){const tall=buildings.filter(b=>b.level>=5&&b.stable>1);

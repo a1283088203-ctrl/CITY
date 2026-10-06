@@ -7,7 +7,7 @@ import {speed} from '../utils/math';
 import {disposeBatches} from '../utils/batch';
 import {WIND} from '../data/wind';
 export class BuildingSystem{
- buildings:Building[]=[];private serial=0;revision=0;era=0;onImpact:(building:Building,speed:number)=>void=()=>{};
+ buildings:Building[]=[];private serial=0;revision=0;era=0;onImpact:(building:Building,speed:number)=>void=()=>{};private roofTimer=0;
  constructor(public scene:T.Scene,public physics:PhysicsSystem,public onCollapse:(building:Building)=>void=()=>{}){}
  spawn(level:number,x:number,y:number,z:number,yaw=0,tilt=false,variant?:number){
  const d=buildingData(level),q=new T.Quaternion().setFromEuler(new T.Euler(tilt?.018:0,yaw,tilt?-.015:0));
@@ -39,6 +39,24 @@ export class BuildingSystem{
   const q=b.body.rotation(),upY=1-2*(q.x*q.x+q.z*q.z);
   if(upY<Math.SQRT1_2-1e-7){this.onCollapse(b);this.remove(b);continue;}
   if(b.body.translation().y<-15)this.remove(b);
- }}
+ }
+ this.roofTimer-=dt;if(this.roofTimer<=0){this.roofTimer=.25;this.updateRoofCoverage();}
+}
+ /** Low-rise pitched roofs hide while another settled building rests on top, restoring when uncovered. */
+ private updateRoofCoverage(){
+ for(const a of this.buildings){
+  if(a.level>2)continue;
+  const aTop=a.body.translation().y+a.data.height/2,ab=a.structuralBounds;
+  let covered=false;
+  for(const b of this.buildings){
+   if(b===a)continue;
+   const dy=b.structuralBounds.min.y-aTop;
+   if(dy<-.3||dy>.55||speed(b.body.linvel())>.6)continue;
+   const bb=b.structuralBounds;
+   if(ab.min.x<bb.max.x-.08&&ab.max.x>bb.min.x+.08&&ab.min.z<bb.max.z-.08&&ab.max.z>bb.min.z+.08){covered=true;break;}
+  }
+  a.setRoofCovered(covered);
+ }
+}
  clear(){for(const b of [...this.buildings])this.remove(b);this.serial=0;}
 }

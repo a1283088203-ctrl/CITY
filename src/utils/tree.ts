@@ -1,3 +1,4 @@
+import * as T from 'three';
 import type {Object3D} from 'three';
 import {box} from './mesh';
 import {seeded} from './math';
@@ -19,6 +20,8 @@ export function voxelTree(parent:Object3D,x:number,z:number,seed:number){
   [.57,.58,.55,.5,.46,.47,.15]
  ];
  const [w,h,d,tw,th,td,rise]=forms[shape],base=(trunk+.14)*height;
- box(parent,w*width,h*height,d*width,x+dx,base,z+dz,leaf);
- box(parent,tw*width,th*height,td*width,x+(shape===3?.25:dx*.5),base+rise*height,z+(shape===3?-.16:dz*.5),tip);
+ // Crown boxes live in a pivot group at the trunk top so the wind can tilt them.
+ const crown=new T.Group();crown.name='crown';crown.position.set(x,base,z);parent.add(crown);
+ box(crown,w*width,h*height,d*width,dx,0,dz,leaf);
+ box(crown,tw*width,th*height,td*width,shape===3?.25:dx*.5,rise*height,shape===3?-.16:dz*.5,tip);
 }

@@ -67,5 +67,5 @@ export function configureGroundTexture(material:T.MeshLambertMaterial){
    detail=mix(1.,detail,mix(.5,.85,variation.y));
    diffuseColor.rgb*=mix(1.,detail,groundTop*.45);`);
  };
- material.customProgramCacheKey=()=>`ground-transition-v6-${kind}`;
+ material.customProgramCacheKey=()=>`ground-transition-v8-${kind}`;
 }

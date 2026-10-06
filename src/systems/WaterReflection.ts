@@ -6,8 +6,9 @@ import {fromKey,toWorld} from '../utils/grid';
 /** One river-shaped reflection target; only buildings and lighting use layer 1. */
 export class WaterReflection{
  readonly surface:Reflector;
- constructor(water:Set<string>,bridges:Set<string>){
+ constructor(water:Set<string>,bridges:Set<string>,outer:[number,number][]=[]){
   const planes=[...water].filter(k=>!bridges.has(k)).map(k=>{const p=toWorld(fromKey(k));return new T.PlaneGeometry(1.5,1.5).translate(p.x,-p.z,0);});
+  for(const [x,z] of outer)planes.push(new T.PlaneGeometry(3.01,3.01).translate(x,-z,0));
   const geometry=mergeGeometries(planes,false)!;planes.forEach(p=>p.dispose());
   const mobile=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches,size=mobile?256:512;
   this.surface=new Reflector(geometry,{textureWidth:size,textureHeight:size,multisample:0,clipBias:.003,color:0x5b9ca8,shader:{

@@ -17,7 +17,7 @@ export class NPCSystem{
  if(!a.route.length){a.mesh.visible=true;const destinations=!this.driving&&Math.random()<(activity<.65?.8:.3)&&this.roads.entrances.length?this.roads.entrances:nodes;const goal=destinations[Math.floor(Math.random()*destinations.length)];a.route=this.paths.find(a.node,p=>key(p)===key(goal),this.roads.blocked,this.roads.roads).slice(1);if(!a.route.length){a.pause=.4;continue;}}
  const next=a.route[0],w=toWorld(next),offset=this.driving?0:this.roads.sidewalkOffset(next),dx=w.x+offset-a.mesh.position.x,dz=w.z+offset-a.mesh.position.z,dist=Math.hypot(dx,dz),step=dt*(this.driving?1.55+stage*.2:.45+stage*.11);
  if(dist<=step){a.node=next;a.route.shift();a.mesh.position.set(w.x+offset,.12,w.z+offset);if(!a.route.length&&!this.driving){a.pause=.5+Math.random()*2;if(this.roads.entrances.some(p=>key(p)===key(next))){a.mesh.visible=false;a.pause=2;}}}
- else{a.mesh.position.x+=dx/dist*step;a.mesh.position.z+=dz/dist*step;a.mesh.rotation.y=Math.atan2(dx,dz);a.phase+=dt*10;for(let i=0;i<a.legs.length;i++)a.legs[i].rotation.x=Math.sin(a.phase+i*Math.PI)*.4;}
+ else{a.mesh.position.x+=dx/dist*step;a.mesh.position.z+=dz/dist*step;a.mesh.rotation.y=Math.atan2(dx,dz);a.phase+=dt*10;for(let i=0;i<a.legs.length;i++)a.legs[i].rotation.x=Math.sin(a.phase+i*Math.PI)*.4;for(let i=0;i<a.arms.length;i++)a.arms[i].rotation.x=Math.sin(a.phase+(i+1)*Math.PI)*.3;}
  }this.version=this.roads.version;
  }
  private place(a:NPC,node:NPC['node']){a.node=node;const p=toWorld(node),o=this.driving?0:this.roads.sidewalkOffset(node);a.mesh.position.set(p.x+o,.12,p.z+o);}
