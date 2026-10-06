@@ -57,7 +57,8 @@ export class CityScene{
  setStreetLights(positions:T.Vector3[],night:number){this.streetLights.forEach((light,i)=>{light.intensity=positions[i]?night*2.4:0;if(positions[i])light.position.copy(positions[i]);});}
  render(camera:T.PerspectiveCamera){if(this.composer)this.composer.render();else this.renderer.render(this.scene,camera);}
  /** Keep the pixel-grain look on any screen: render scale is capped by an absolute buffer size, so fullscreen on large monitors never gets smoother than the intended grain. UI is DOM and stays crisp. */
- private pixelScale(w:number,h:number){const coarse=matchMedia('(pointer: coarse)').matches;return Math.min(coarse?.65:.5,(coarse?1280:960)/w,(coarse?800:540)/h);}
+ private pixelScale(w:number,h:number){const coarse=matchMedia('(pointer: coarse)').matches;// Phones get the same buffer budget as desktop: the post chain (boundary, bloom, grade) is fill-rate bound there.
+  return Math.min(.5,(coarse?800:960)/Math.max(w,h),(coarse?480:540)/Math.min(w,h));}
  setCrt(on:boolean){if(this.crt)this.crt.enabled=on;}
  resize(w:number,h:number){const scale=this.pixelScale(w,h);this.renderer.setPixelRatio(scale);this.renderer.setSize(w,h);if(this.composer){this.composer.setPixelRatio(scale);this.composer.setSize(w,h);}if(this.crt)(this.crt.uniforms.resolution.value as T.Vector2).set(w*scale,h*scale);}
 }

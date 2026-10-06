@@ -1,107 +1,134 @@
 import * as T from 'three';
-import type {Object3D} from 'three';
-import {box} from './mesh';
 import {seeded} from './math';
-import {batchStatic} from './batch';
 
-/** Shade, base and sunlit leaf tones; three tones give the voxel crowns visible volume. */
-type Leaves=[number,number,number];
-const broadleaf:Leaves[]=[[0x587d5e,0x719b71,0x97b97d],[0x4f7562,0x648e70,0x85aa78],[0x61805a,0x77976a,0xa0b880],[0x4b7262,0x5f8870,0x80a481]];
-const needle:Leaves[]=[[0x42665a,0x547c68,0x6f9a78],[0x4a6956,0x5d8165,0x7ca27c]];
-const accents=[0xe8a6a6,0xf1e2c8,0xd9764e];
-const BARK=0x806850,BARK_DARK=0x6a5442;
+/* Pixel-art trees: chunky cube clumps, teal shade against yellow-green light, a dusky underside
+ * and thin forked trunks. Each tree (with its undergrowth) is one vertex-coloured geometry sharing a
+ * single material, and wind sway runs in the vertex shader, so a tree costs one draw call. */
 
-/** One leaf clump: shaded underside, main mass, sunlit cap and one stepped side bump. */
-function clump(g:Object3D,r:()=>number,x:number,y:number,z:number,w:number,h:number,d:number,[shade,leaf,light]:Leaves){
- box(g,w*.84,h*.36,d*.84,x,y-h*.36,z,shade);
- box(g,w,h*.6,d,x,y,z,leaf);
- box(g,w*.64,h*.3,d*.64,x+(r()-.5)*w*.16,y+h*.4,z+(r()-.5)*d*.16,light);
- const side=Math.floor(r()*4),sign=side%2?1:-1,along=(r()-.5)*.5;
- const ox=side<2?sign*w*.5:along*w,oz=side<2?along*d:sign*d*.5;
- box(g,w*.36,h*.34,d*.36,x+ox,y+(r()-.35)*h*.3,z+oz,leaf);
+const unit=new T.BoxGeometry(1,1,1);
+const UP=unit.getAttribute('position').array,UN=unit.getAttribute('normal').array,UI=unit.getIndex()!.array;
+const color=new T.Color(),matrix=new T.Matrix4(),point=new T.Vector3(),normal=new T.Vector3(),size=new T.Vector3(),spot=new T.Vector3();
+const identity=new T.Quaternion(),UPWARD=new T.Vector3(0,1,0);
+
+const LIGHT=[0xb2d47a,0xa8cc70,0xbcd886],TEAL=[0x6aa596,0x629c90,0x72ad98],DEEP=0x6f6d88;
+const TRUNK=0x8b6449,TRUNK_DARK=0x5f4535,BLOSSOM=[0xf0d27a,0xe9a7a0,0xf4ecd6];
+const darker=(hex:number,f:number)=>color.setHex(hex).multiplyScalar(f).getHex();
+
+/** Collects coloured boxes into a single indexed geometry. */
+class Voxels{
+ private pos:number[]=[];private nor:number[]=[];private col:number[]=[];private sway:number[]=[];private idx:number[]=[];
+ /** Vertices above `pivot` sway in proportion to their height over it. */
+ constructor(private pivot:number,private phase:number){}
+ box(w:number,h:number,d:number,x:number,y:number,z:number,hex:number,rotation:T.Quaternion=identity){
+  matrix.compose(spot.set(x,y,z),rotation,size.set(w,h,d));color.setHex(hex);
+  const base=this.pos.length/3;
+  for(let i=0;i<UP.length;i+=3){
+   point.set(UP[i],UP[i+1],UP[i+2]).applyMatrix4(matrix);normal.set(UN[i],UN[i+1],UN[i+2]).applyQuaternion(rotation);
+   this.pos.push(point.x,point.y,point.z);this.nor.push(normal.x,normal.y,normal.z);this.col.push(color.r,color.g,color.b);
+   this.sway.push(Math.max(0,point.y-this.pivot));
+  }
+  for(let i=0;i<UI.length;i++)this.idx.push(base+UI[i]);
+ }
+ build(){
+  const g=new T.BufferGeometry(),count=this.pos.length/3;
+  g.setAttribute('position',new T.Float32BufferAttribute(this.pos,3));g.setAttribute('normal',new T.Float32BufferAttribute(this.nor,3));
+  g.setAttribute('color',new T.Float32BufferAttribute(this.col,3));g.setAttribute('sway',new T.Float32BufferAttribute(this.sway,1));
+  g.setAttribute('phase',new T.Float32BufferAttribute(new Float32Array(count).fill(this.phase),1));
+  g.setIndex(this.idx);g.computeBoundingBox();g.computeBoundingSphere();return g;
+ }
 }
 
-/** A short angled limb from the crown pivot towards a clump. */
-function limb(g:Object3D,x:number,y:number,z:number,thickness:number){
- const length=Math.hypot(x,y,z),m=box(g,thickness,length,thickness,x/2,y/2,z/2,BARK);
- m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),new T.Vector3(x,y,z).normalize());
+const wind={windTime:{value:0},windLean:{value:.02},windDir:{value:new T.Vector2(1,0)}};
+/** Shared by every tree and shrub; vertex colours carry the palette. */
+export const vegetationMaterial=new T.MeshLambertMaterial({vertexColors:true});
+vegetationMaterial.onBeforeCompile=shader=>{
+ Object.assign(shader.uniforms,wind);
+ shader.vertexShader='uniform float windTime,windLean;uniform vec2 windDir;attribute float sway;attribute float phase;\n'+shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+  // Lean along the wind with gusts, plus a small per-tree flutter.
+  float gust=.55+.45*sin(windTime*1.4+phase);
+  vec2 flutter=vec2(sin(windTime*2.1+phase),cos(windTime*2.4+phase))*sin(windTime*2.6+phase*1.7)*.014;
+  transformed.xz+=(windDir*windLean*gust+flutter)*sway;`);
+};
+vegetationMaterial.customProgramCacheKey=()=>'vegetation-wind-v1';
+export function setVegetationWind(time:number,strength:number,direction:T.Vector3){
+ wind.windTime.value=time;wind.windLean.value=.02+strength*.13;wind.windDir.value.set(direction.x,direction.z);
 }
 
-/** Low shrubs scattered around (x,z); `spread` keeps them inside the cell, `avoid` keeps a trunk clear. */
-export function voxelBushes(parent:Object3D,x:number,z:number,seed:number,count:number,spread=.5,avoid=0){
- const random=seeded(seed),group=new T.Group();
+/** One cube clump: main mass, dusky underside, a leafy notch on top and darker leaf specks.
+ * Every clump of a tree shares one tone, so a tree reads as either a light or a dark tree. */
+function clump(v:Voxels,r:()=>number,x:number,y:number,z:number,s:number,lit:boolean){
+ const hex=(lit?LIGHT:TEAL)[Math.floor(r()*3)],w=s*(.92+r()*.16),h=s*(.82+r()*.16),d=s*(.92+r()*.16);
+ v.box(w,h,d,x,y,z,hex);
+ v.box(w*.94,h*.16,d*.94,x,y-h*.5-h*.05,z,DEEP);
+ v.box(w*(.3+r()*.2),h*.12,d*(.3+r()*.2),x+(r()-.5)*w*.4,y+h*.55,z+(r()-.5)*d*.4,hex);
+ const speck=darker(hex,lit?.84:.78);
+ for(let i=0;i<3;i++){
+  const face=Math.floor(r()*4),a=r()-.5,sx=face===0?w*.5:face===1?-w*.5:a*w*.7,sz=face===2?d*.5:face===3?-d*.5:a*d*.7;
+  v.box(s*.12,s*.12,s*.12,x+sx,y+(r()-.35)*h*.6,z+sz,speck);
+ }
+}
+
+/** Thin trunk drawn in two offset segments for a pixel-style bend, with a shaded face and root flare. */
+function trunk(v:Voxels,r:()=>number,height:number,thick:number){
+ const ox=(r()-.5)*.06,oz=(r()-.5)*.06;
+ v.box(thick,height*.56,thick,0,height*.28,0,TRUNK);
+ v.box(thick*.9,height*.5,thick*.9,ox,height*.56+height*.25,oz,TRUNK);
+ v.box(thick*.32,height*.5,thick*1.02,thick*.36,height*.3,0,TRUNK_DARK);
+ v.box(thick*1.8,.06,thick*1.8,0,.03,0,TRUNK_DARK);
+}
+
+/** A straight limb between two points. */
+function limb(v:Voxels,x0:number,y0:number,z0:number,x1:number,y1:number,z1:number,thick:number){
+ const dir=new T.Vector3(x1-x0,y1-y0,z1-z0),length=dir.length();
+ v.box(thick,length,thick,(x0+x1)/2,(y0+y1)/2,(z0+z1)/2,TRUNK,new T.Quaternion().setFromUnitVectors(UPWARD,dir.normalize()));
+}
+
+/** Low shrub mounds in a single tone (light or dark), with a small cap and the odd blossom. */
+function shrubs(v:Voxels,r:()=>number,count:number,spread:number,avoid:number,lit:boolean){
  for(let i=0;i<count;i++){
-  const tones=broadleaf[Math.floor(random()*broadleaf.length)];
-  let ox=0,oz=0;
-  for(let tries=0;tries<6;tries++){ox=(random()*2-1)*spread;oz=(random()*2-1)*spread;if(Math.hypot(ox,oz)>=avoid)break;}
-  const w=.26+random()*.2,h=.18+random()*.14,d=w*(.8+random()*.35);
-  // Shaded skirt, main mound, sunlit top, then one or two lobes for an uneven outline.
-  box(group,w*1.06,h*.34,d*1.06,x+ox,h*.17,z+oz,tones[0]);
-  box(group,w,h*.62,d,x+ox,h*.5,z+oz,tones[1]);
-  box(group,w*.6,h*.26,d*.6,x+ox+(random()-.5)*w*.2,h*.92,z+oz+(random()-.5)*d*.2,tones[2]);
-  for(let j=0,lobes=1+Math.floor(random()*2);j<lobes;j++){
-   const a=random()*Math.PI*2,s=.45+random()*.2;
-   box(group,w*s,h*s*1.1,d*s,x+ox+Math.cos(a)*w*.5,h*s*.55,z+oz+Math.sin(a)*d*.5,random()<.5?tones[1]:tones[0]);
-  }
-  if(random()<.3){const accent=accents[Math.floor(random()*accents.length)];
-   for(let j=0;j<3;j++)box(group,.05,.05,.05,x+ox+(random()-.5)*w*.8,h*(.75+random()*.25),z+oz+(random()-.5)*d*.8,accent);}
+  let px=0,pz=0;
+  for(let tries=0;tries<6;tries++){px=(r()*2-1)*spread;pz=(r()*2-1)*spread;if(Math.hypot(px,pz)>=avoid)break;}
+  const w=.26+r()*.2,h=.18+r()*.12,hex=(lit?LIGHT:TEAL)[Math.floor(r()*3)];
+  v.box(w,h,w*.9,px,h/2,pz,hex);
+  v.box(w*.62,h*.34,w*.56,px-w*.12,h+h*.1,pz+w*.1,hex);
+  if(r()<.3)v.box(.06,.06,.06,px+(r()-.5)*w*.6,h*.85,pz+w*.46,BLOSSOM[Math.floor(r()*3)]);
  }
- batchStatic(group);
- // Re-parent the merged meshes so callers see plain children, like the tree trunk boxes.
- for(const child of [...group.children])parent.add(child);
 }
 
-/** Stable per-cell trees: round, conifer, poplar and forked forms, all within their planting cell. */
-export function voxelTree(parent:Object3D,x:number,z:number,seed:number){
- const random=seeded(seed),roll=random();
- const shape=roll<.4?0:roll<.65?1:roll<.8?2:3;
- const height=.8+random()*.45,width=.8+random()*.35;
- const leaves=(shape===1?needle:broadleaf)[Math.floor(random()*(shape===1?needle:broadleaf).length)];
- const trunk=(shape===1?.3:shape===2?.42:.48+random()*.2)*height,thickness=(shape===2?.09:.11)+random()*.05;
- // Trunk with a darker root flare.
- box(parent,thickness,trunk+.06,thickness,x,(trunk+.06)/2,z,BARK);
- box(parent,thickness*1.6,.06,thickness*1.6,x,.03,z,BARK_DARK);
- const dx=(random()-.5)*.14,dz=(random()-.5)*.14;
- // Crown boxes live in a pivot group at the trunk top so the wind can tilt them.
- const crown=new T.Group();crown.name='crown';crown.position.set(x,trunk,z);parent.add(crown);
- if(shape===0){
-  const w=.62*width,h=.5*height;
-  clump(crown,random,dx,h*.55,dz,w,h,w*.92,leaves);
-  for(let i=0;i<2;i++){
-   const angle=random()*Math.PI*2+i*Math.PI,s=.42+random()*.1,ox=Math.cos(angle)*w*.36,oz=Math.sin(angle)*w*.36;
-   limb(crown,ox,h*.3,oz,thickness*.6);
-   clump(crown,random,ox,h*.32,oz,w*s,h*.55,w*s,leaves);
-  }
-  clump(crown,random,dx*.5,h*1.12,dz*.5,w*.48,h*.42,w*.48,leaves);
-  // Some round trees carry blossom or fruit specks on the sunlit side.
-  if(random()<.22){const accent=accents[Math.floor(random()*accents.length)];
-   for(let i=0;i<4;i++){const a=random()*Math.PI*2;box(crown,.06,.06,.06,dx+Math.cos(a)*w*.5,h*(.45+random()*.6),dz+Math.sin(a)*w*.5,accent);}}
- }else if(shape===1){
-  // Stacked, narrowing tiers with a sunlit cap on each and a pointed tip.
-  const tiers=3+Math.floor(random()*2),w=.78*width,step=.3*height;
-  for(let i=0;i<tiers;i++){
-   const s=w*(1-i/(tiers+.6)),y=.05+i*step*.72,ox=(random()-.5)*.05,oz=(random()-.5)*.05;
-   box(crown,s*.88,step*.6,s*.88,ox,y+step*.2,oz,i===0?leaves[0]:leaves[1]);
-   box(crown,s*.5,step*.22,s*.5,ox-s*.08,y+step*.6,oz-s*.08,leaves[2]);
-  }
-  const top=.05+tiers*step*.72;
-  box(crown,.14*width,step*.6,.14*width,0,top+step*.2,0,leaves[1]);
-  box(crown,.07,step*.4,.07,0,top+step*.6,0,leaves[2]);
- }else if(shape===2){
-  // Poplar: a tall, narrow column of overlapping clumps.
-  const w=.42*width,h=.38*height;
-  for(let i=0;i<3;i++)clump(crown,random,dx*(1-i*.3),h*(.5+i*.75),dz*(1-i*.3),w*(1-i*.16),h,w*(1-i*.16),leaves);
-  box(crown,w*.3,h*.4,w*.3,0,h*2.55,0,leaves[2]);
+/** Stable per-cell tree in local space (origin at the cell centre), optionally with undergrowth. */
+export function treeGeometry(seed:number,undergrowth=0){
+ const r=seeded(seed),roll=r(),k=.86+r()*.18,form=roll<.45?0:roll<.72?1:2;
+ // Two kinds of tree: light yellow-green or dark teal, never mixed within one tree.
+ const lit=r()<.5;
+ const height=form===2?(.7+r()*.2)*k:form===1?.24*k:.36*k;
+ const v=new Voxels(height*.55,r()*Math.PI*2);
+ if(form===0){
+  // Broad crown: a row of three clumps under two larger ones.
+  trunk(v,r,height+.3*k,.12*k);
+  const y1=height+.3*k,y2=height+.76*k;
+  for(const [x,z] of [[-.36,.08],[.02,-.16],[.38,.1]] as const)clump(v,r,x*k,y1,z*k,.48*k,lit);
+  for(const [x,z,dy] of [[-.2,-.04,0],[.22,.06,.04]] as const)clump(v,r,x*k,y2+dy*k,z*k,.56*k,lit);
+ }else if(form===1){
+  // Tall column of stacked clumps, narrowing towards the top.
+  trunk(v,r,height+.3*k,.11*k);
+  const n=3+Math.floor(r()*2);
+  for(let i=0;i<n;i++){const side=i%2?.07:-.07;clump(v,r,side*k,height+.3*k+i*.36*k,-side*k,(.62-i*.06)*k,lit);}
  }else{
-  // Forked: two limbs carry separate clumps around a small centre tuft.
-  const w=.44*width,h=.42*height,angle=random()*Math.PI;
+  // Branching tree: a tall thin trunk forks into two limbs carrying clumps around a top crown.
+  trunk(v,r,height,.1*k);
+  const fork=height*.55,angle=r()*Math.PI;
   for(const sign of [1,-1]){
-   const ox=Math.cos(angle)*.24*sign,oz=Math.sin(angle)*.24*sign,oy=h*(sign>0?.9:.62);
-   limb(crown,ox,oy,oz,thickness*.7);
-   clump(crown,random,ox,oy+h*.2,oz,w,h,w,leaves);
+   const x=Math.cos(angle)*.34*k*sign,z=Math.sin(angle)*.34*k*sign,y=height+(sign>0?.28:.12)*k;
+   limb(v,0,fork,0,x,y,z,.07*k);
+   clump(v,r,x,y+.16*k,z,.46*k,lit);
   }
-  clump(crown,random,0,h*.5,0,w*.6,h*.6,w*.6,leaves);
+  clump(v,r,0,height+.52*k,0,.5*k,lit);
  }
- // Merge per-material so the extra detail costs a handful of draw calls per tree.
- batchStatic(crown);
+ if(undergrowth)shrubs(v,r,undergrowth,.55,.24,lit);
+ return v.build();
+}
+
+/** A free-standing shrub patch in local space; it stays still in the wind. */
+export function shrubGeometry(seed:number,count:number){
+ const r=seeded(seed),v=new Voxels(99,0);shrubs(v,r,count,.5,0,r()<.5);return v.build();
 }
