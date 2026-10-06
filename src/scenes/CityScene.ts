@@ -42,7 +42,7 @@ export class CityScene{
  setStage(index:number){this.stage=index;}
  applyLighting(time:TimeOfDaySystem,dt:number){
   this.scene.background=null;
-  this.skyGradient.update(time.night,time.hour);(this.scene.fog as T.Fog).color.copy(this.skyGradient.fogColor);this.mountains.update(this.skyGradient.fogColor,this.skyGradient.material.uniforms.upper.value);
+  this.skyGradient.update(time.night,time.hour);(this.scene.fog as T.Fog).color.copy(this.skyGradient.fogColor);this.mountains.update(this.skyGradient.fogColor,this.skyGradient.material.uniforms.upper.value,dt,this.skyGradient.sunset,time.night);
   this.sun.color.copy(time.sun);this.sun.intensity=time.sunPower;this.ambient.color.copy(time.ambient);this.ambient.intensity=time.ambientPower;
   const angle=(time.hour-6)/24*Math.PI*2;this.sun.position.set(Math.cos(angle)*28,Math.max(9,Math.sin(angle)*35),18);
   setNightLights(time.night,dt);this.boundary?.update(this.ambient,this.sun,time.sky,this.scene.fog as T.Fog);

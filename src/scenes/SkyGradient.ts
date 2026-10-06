@@ -4,6 +4,8 @@ export type SkyPalette=ReturnType<typeof defaultSky>;
 export class SkyGradient{
  readonly material:T.ShaderMaterial;
  readonly mesh:T.Mesh;
+ /** 0..1 strength of the warm sunrise/sunset sky. */
+ sunset=0;
  palette=defaultSky();private night=0;private hour=9;private sunsetSky=new T.Color('#a87eaa');private sunsetHorizon=new T.Color('#d28b65');readonly fogColor=new T.Color();
  constructor(scene:T.Scene){
   // Screen-space gradient above the horizon; rays pointing below it (steep views past the scenery and the mountain rim) resolve to fog color.
@@ -11,7 +13,9 @@ export class SkyGradient{
   this.mesh=new T.Mesh(new T.PlaneGeometry(2,2),this.material);this.mesh.name='sky-gradient';this.mesh.frustumCulled=false;this.mesh.renderOrder=-10000;this.mesh.layers.enable(1);scene.add(this.mesh);this.update(0);
  }
  set(p:SkyPalette){this.palette={...p};this.update(this.night,this.hour);}
- update(night:number,hour=9){this.night=night;this.hour=hour;const sunset=T.MathUtils.smoothstep(hour,16+40/60,17.8)*(1-T.MathUtils.smoothstep(hour,17.8,18+50/60));const brightness=1-night*.88;this.material.uniforms.upper.value.set(this.palette.sky).lerp(this.sunsetSky,sunset).multiplyScalar(brightness);this.material.uniforms.lower.value.set(this.palette.background).lerp(this.sunsetHorizon,sunset).multiplyScalar(brightness);this.material.uniforms.transition.value=this.palette.transition;this.fogColor.copy(this.material.uniforms.upper.value).lerp(this.material.uniforms.lower.value,.35);}
+ update(night:number,hour=9){this.night=night;this.hour=hour;// Sunrise uses the same warm sky as sunset, mirrored around its own peak.
+  const glow=(start:number,peak:number,end:number)=>T.MathUtils.smoothstep(hour,start,peak)*(1-T.MathUtils.smoothstep(hour,peak,end));
+  const sunset=Math.max(glow(16+40/60,17.8,18+50/60),glow(5,6+2/60,7+10/60));this.sunset=sunset;const brightness=1-night*.88;this.material.uniforms.upper.value.set(this.palette.sky).lerp(this.sunsetSky,sunset).multiplyScalar(brightness);this.material.uniforms.lower.value.set(this.palette.background).lerp(this.sunsetHorizon,sunset).multiplyScalar(brightness);this.material.uniforms.transition.value=this.palette.transition;this.fogColor.copy(this.material.uniforms.upper.value).lerp(this.material.uniforms.lower.value,.35);}
 }
 
 
