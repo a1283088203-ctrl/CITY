@@ -15,7 +15,9 @@ export class MergeSystem{
  const p=new T.Vector3().copy(a.body.translation()).add(b.body.translation()).multiplyScalar(.5),level=a.level+1;
  const anchored=a.windAnchor||b.windAnchor;
  p.y=Math.max(p.y,buildingData(level).height/2+.2);this.buildings.remove(a);this.buildings.remove(b);
- const next=this.buildings.spawn(level,p.x,p.y+.25,p.z);next.windAnchor=anchored;next.body.setLinvel({x:0,y:2.2,z:0},true);this.count++;this.onMerge(level,p);}
+ const next=this.buildings.spawn(level,p.x,p.y+.25,p.z);next.windAnchor=anchored;next.body.setLinvel({x:0,y:2.2,z:0},true);
+ // The merged building hops and lands again; mute that landing so the merge plays as one clean sound.
+ next.impactCooldown=1.2;this.count++;this.onMerge(level,p);}
  for(const k of this.contacts.keys())if(!seen.has(k))this.contacts.delete(k);
  }
  reset(){this.contacts.clear();this.count=0;}
