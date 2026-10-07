@@ -65,8 +65,16 @@ export class SoundSystem{
  /** Place: a round mid "bo" over a soft thump, loud enough for phone speakers. */
  drop(){this.pop(scale(3),0,.32,.14,1.7);this.thump(170,.32,.16);}
  impact(speed:number){const t=this.context?.currentTime??0;if(t-this.lastImpact<.13)return;this.lastImpact=t;const v=Math.min(.3,.08+speed*.013);this.pop(scale(1),0,v,.1,1.4);this.thump(130,v*.8,.14);}
- /** Merge: the placement "bo" at the same low pitch over a deeper, heavier thump, a bit louder. */
- merge(_level:number){this.pop(scale(3),0,.4,.16,1.7);this.thump(150,.42,.2);}
+ /** Merge: a single loud, crisp "bop". Its own design: a very short sine that leaps up a twelfth (×3) along a
+  * curved sweep and lands on a pentatonic note, with a tiny bright click on the attack. Bigger buildings land lower. */
+ merge(level:number){
+  const c=this.ready();if(!c)return;const t=c.currentTime,land=scale(Math.max(4,11-level)),length=.05;
+  const o=c.createOscillator(),g=c.createGain();o.type='sine';
+  o.frequency.setValueAtTime(land/3,t);o.frequency.setTargetAtTime(land,t,.009);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.6,t+.002);g.gain.exponentialRampToValueAtTime(.0001,t+length);
+  o.connect(g).connect(this.bus!);this.voices++;o.onended=()=>{o.disconnect();g.disconnect();this.voices--;};o.start(t);o.stop(t+length+.01);
+  this.fizz(.012,.09,5200,'bandpass');
+ }
  /** Collapse: tumbling pops falling down the scale over a soft crumble and thud. */
  collapse(){this.fizz(.45,.16,1200,'lowpass',0,240);this.thump(150,.3,.4);[6,4,3,1,0].forEach((s,i)=>this.pop(scale(s),.04+i*.07,.17,.11,.6));}
  /** City stage unlocked: a quick bubbly run up the scale, ending on a held high pop. */
