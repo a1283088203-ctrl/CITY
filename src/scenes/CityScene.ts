@@ -63,8 +63,8 @@ export class CityScene{
  render(camera:T.PerspectiveCamera){this.mountains.setView(camera);if(this.composer)this.composer.render();else this.renderer.render(this.scene,camera);}
  /** Keep the pixel-grain look on any screen: render scale is capped by an absolute buffer size, so fullscreen on large monitors never gets smoother than the intended grain. UI is DOM and stays crisp. */
  private pixelScale(w:number,h:number){const coarse=matchMedia('(pointer: coarse)').matches;
-  // On phones the scale cap is what limits sharpness (the pixel caps sit above a phone's CSS size); 0.6 trades a little fill rate for clarity.
-  return Math.min(coarse?.6:.5,(coarse?880:960)/Math.max(w,h),(coarse?520:540)/Math.min(w,h));}
+  // On phones the scale cap is what limits sharpness (the pixel caps sit above a phone's CSS size); 0.75 trades some fill rate for clarity.
+  return Math.min(coarse?.75:.5,(coarse?880:960)/Math.max(w,h),(coarse?520:540)/Math.min(w,h));}
  setCrt(on:boolean){if(this.crt)this.crt.enabled=on;}
  resize(w:number,h:number){const scale=this.pixelScale(w,h);this.renderer.setPixelRatio(scale);this.renderer.setSize(w,h);if(this.composer){this.composer.setPixelRatio(scale);this.composer.setSize(w,h);}if(this.crt)(this.crt.uniforms.resolution.value as T.Vector2).set(w*scale,h*scale);}
 }
