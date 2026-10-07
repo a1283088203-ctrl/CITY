@@ -16,12 +16,16 @@ export class DecorationSystem{
  lampPositions:T.Vector3[]=[];private links=new Map<string,T.Group>();
  constructor(scene:T.Scene){scene.add(this.group);}
  update(roads:RoadSystem,stage:number,green:number,dt=1/60){
- for(const [k,e] of this.entries){if(roads.blocked.has(k)||roads.roads.has(k)||roads.terrain?.blocked.has(k)){release(e.mesh);this.entries.delete(k);}else if((e.kind==='tree'&&e.rank>green*.46)||(e.kind==='bush'&&e.rank>green*.66)){e.mesh.scale.multiplyScalar(Math.exp(-dt*.3));if(e.mesh.scale.y<.08){release(e.mesh);this.entries.delete(k);}}}
- const signature=`${roads.version}:${stage}`;if(signature===this.last)return;this.last=signature;const rand=seeded(roads.terrain?.seed??824);
+ for(const [k,e] of this.entries){if(roads.blocked.has(k)||roads.roads.has(k)||roads.terrain?.blocked.has(k)){release(e.mesh);this.entries.delete(k);}else if((e.kind==='tree'&&e.rank>green*.46)||(e.kind==='bush'&&e.rank>green*.66)){e.mesh.scale.multiplyScalar(Math.exp(-dt*4));if(e.mesh.scale.y<.08){release(e.mesh);this.entries.delete(k);}}}
+ // Quick shrink (~0.6s) when a lower greenery target clears a tree, so it reads as deliberate rather than a slow fade.
+ const signature=`${roads.version}:${stage}`;if(signature===this.last)return;this.last=signature;
  for(let x=1;x<15;x++)for(let z=1;z<15;z++){const p={x,z};if(roads.blocked.has(key(p))||roads.roads.has(key(p)))continue;const w=toWorld(p),near=neighbors(p).some(n=>roads.roads.has(key(n)));
- const rank=rand(),choice=rand(),k=key(p);if(this.entries.has(k)||roads.terrain?.blocked.has(k))continue;
- const mesh=new T.Group();let kind='';
+ const k=key(p);if(this.entries.has(k)||roads.terrain?.blocked.has(k))continue;
  const cellSeed=((roads.terrain?.seed??824)^Math.imul(x+1,73856093)^Math.imul(z+1,19349663))>>>0;
+ // Rank and choice belong to the cell, not to the order cells are visited, so road changes never
+ // reshuffle them: a tree cleared by urbanisation cannot pop back, and kept trees stay put.
+ const cellRandom=seeded(cellSeed^0x2545f491),rank=cellRandom(),choice=cellRandom();
+ const mesh=new T.Group();let kind='';
  // Trees and shrubs are a single vertex-coloured mesh in local space; about half the trees get undergrowth.
  if(rank<green*.46){kind='tree';vegetation(mesh,treeGeometry(cellSeed,choice<.5?1+Math.floor(choice*4):0),w.x,w.z);}
  // Free-standing shrub patches on green cells away from roads.

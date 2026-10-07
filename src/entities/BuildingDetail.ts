@@ -28,7 +28,7 @@ export function refineBuilding(parent:T.Group,data:BuildingData,variant:number){
  box(g,door.width+.34,.07,.18,0,-h/2+.105,front+.09,shade(data.color,.65));
  box(g,door.width+.2,.08,.06,0,-h/2+door.height+.055,front+.045,tint(data.color,.3));
  if(l<=2)litBox(g,.06,.1,.06,0,-h/2+door.height+.12,front+.05,0x8a7a5c,0xffc780,1.5);
- else for(const s of [-1,1])litBox(g,.06,.1,.06,s*(door.width/2+.14),-h/2+door.height+.1,front+.05,0x8a7a5c,l>=6?0x77eee0:0xffc780,1.5);
+ else for(const s of [-1,1])litBox(g,.06,.1,.06,s*(door.width/2+.14),-h/2+door.height+.1,front+.05,0x8a7a5c,l>=7?0x77eee0:0xffc780,1.5);
 
  // Continuous sill ledges under every window row (front row 0 skipped: the door lives there).
  for(let f=0;f<floors;f++){
@@ -78,7 +78,7 @@ export function refineBuilding(parent:T.Group,data:BuildingData,variant:number){
   box(g,w*.54,.07,d*.54,0,h/2+.71,0,shade(data.roof,.85));
  }
 
- if(l===6){
+ if(l===7){
   // Tower crown with a beacon on top.
   box(g,w*.7,.5,d*.7,0,h/2+.43,0,shade(data.color,.9));
   litBox(g,w*.72,.07,.1,0,h/2+.62,d*.36,0x488b85,0x63e9dc,3);
@@ -86,7 +86,7 @@ export function refineBuilding(parent:T.Group,data:BuildingData,variant:number){
   litBox(g,.1,.3,.1,0,h/2+.83,0,0x488b85,0x63e9dc,3);
  }
 
- if(l===7){
+ if(l===8){
   // Arcology: crown tier around the spire, base buttress fins, spire beacon.
   box(g,w*.6,1,d*.6,0,h/2+.68,0,shade(data.color,.92));
   box(g,w*.64,.1,d*.64,0,h/2+1.2,0,shade(data.roof,.8));
@@ -94,7 +94,7 @@ export function refineBuilding(parent:T.Group,data:BuildingData,variant:number){
   litBox(g,.14,.14,.14,0,h/2+1.88,0,0x8fe7df,0x77eee0,2.5);
  }
 
- if(l>=8){
+ if(l>=9){
   // Utopia Tower: twin setbacks with glowing rings, observation band, mast beacon.
   box(g,w*.78,2.2,d*.78,0,h/2+1.28,0,shade(data.color,.92));
   litBox(g,w*.8,.09,d*.8,0,h/2+.24,0,0x488b85,0x63e9dc,3);

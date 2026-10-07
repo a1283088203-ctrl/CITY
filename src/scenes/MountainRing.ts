@@ -10,6 +10,20 @@ export class MountainRing{
  private readonly far=new T.Color();private readonly mid=new T.Color();private readonly near=new T.Color();private readonly tint=new T.Color();private readonly haze=new T.Color();
  private readonly cloudBack=new T.Color();private readonly cloudFront=new T.Color();private readonly drift={value:0};
  private readonly cloudTexture=new T.DataTexture(new Uint8Array(CLOUD_W*CLOUD_H*4),CLOUD_W,CLOUD_H);
+ /** Per-layer texture offsets (far ridge, mid ridge, far clouds, near clouds), in ring turns. */
+ private readonly parallax=new T.Vector4();private readonly look=new T.Vector3();private yaw=0;private lastAzimuth?:number;
+ /** How much each layer turns along with the camera: 0 = fixed in the world (moves normally), 1 = stuck to the view.
+  * Near ridge 0, then near clouds, mid ridge, far clouds and far ridge follow more, so each deeper layer moves slower. */
+ static readonly FOLLOW={nearClouds:.25,midRidge:.45,farClouds:.6,farRidge:.75};
+ /** Call once per frame before rendering. Tracks the unwrapped view azimuth so offsets never jump at ±180°. */
+ setView(camera:T.Camera){
+  camera.getWorldDirection(this.look);
+  const azimuth=Math.atan2(this.look.x,this.look.z);
+  if(this.lastAzimuth!==undefined){let delta=azimuth-this.lastAzimuth;delta-=Math.round(delta/(Math.PI*2))*Math.PI*2;this.yaw+=delta;}
+  this.lastAzimuth=azimuth;
+  const turns=this.yaw/(Math.PI*2),f=MountainRing.FOLLOW;
+  this.parallax.set(turns*f.farRidge,turns*f.midRidge,turns*f.farClouds,turns*f.nearClouds);
+ }
  /** Scatter a fresh set of clouds at random positions around the ring. */
  rerollClouds(seed=Math.floor(Math.random()*2**31)){
   (this.cloudTexture.image.data as Uint8Array).set(cloudMask(seed));this.cloudTexture.needsUpdate=true;this.drift.value=0;
@@ -24,22 +38,28 @@ export class MountainRing{
   clouds.wrapS=T.RepeatWrapping;clouds.magFilter=T.NearestFilter;clouds.minFilter=T.NearestFilter;clouds.generateMipmaps=false;
   this.rerollClouds();
   const material=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,
-   uniforms:{map:{value:texture},clouds:{value:clouds},far:{value:this.far},mid:{value:this.mid},near:{value:this.near},cloudBack:{value:this.cloudBack},cloudFront:{value:this.cloudFront},drift:this.drift,range:{value:new T.Vector2(base,top)},repeats:{value:3},haze:{value:this.haze},hazeHeight:{value:.5}},
+   uniforms:{map:{value:texture},clouds:{value:clouds},far:{value:this.far},mid:{value:this.mid},near:{value:this.near},cloudBack:{value:this.cloudBack},cloudFront:{value:this.cloudFront},drift:this.drift,parallax:{value:this.parallax},range:{value:new T.Vector2(base,top)},repeats:{value:3},haze:{value:this.haze},hazeHeight:{value:.5}},
    vertexShader:'varying vec2 vUv;varying float vY;void main(){vUv=uv;vY=position.y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-   fragmentShader:`uniform sampler2D map,clouds;uniform vec3 far,mid,near,cloudBack,cloudFront,haze;uniform vec2 range;uniform float repeats,hazeHeight,drift;varying vec2 vUv;varying float vY;
+   fragmentShader:`uniform sampler2D map,clouds;uniform vec3 far,mid,near,cloudBack,cloudFront,haze;uniform vec2 range;uniform vec4 parallax;uniform float repeats,hazeHeight,drift;varying vec2 vUv;varying float vY;
     float bayer2(vec2 a){a=floor(a);return fract(a.x/2.+a.y*a.y*.75);}
     float bayer4(vec2 a){return bayer2(.5*a)*.25+bayer2(a);}
     void main(){float v=(vY-range.x)/(range.y-range.x);
-     vec4 m=v<0.?vec4(0.,0.,1.,1.):texture2D(map,vec2(vUv.x*repeats,v));
+     // Parallax: each layer is sampled at its own offset (see setView), so deeper layers turn slower with the camera.
+     // Below the horizon only the solid near foothill band is drawn.
+     float u=vUv.x;bool below=v<0.;
+     float mFar=below?0.:texture2D(map,vec2((u-parallax.x)*repeats,v)).r;
+     float mMid=below?0.:texture2D(map,vec2((u-parallax.y)*repeats,v)).g;
+     float mNear=below?1.:texture2D(map,vec2(u*repeats,v)).b;
      // The cloud texture spans the whole ring once (it is 3x the mountain texture's width).
-     vec4 k=v<0.?vec4(0.):texture2D(clouds,vec2(vUv.x+drift,v));
-     if(m.a<.5&&k.a<.5)discard;
+     float kFar=below?0.:texture2D(clouds,vec2(u-parallax.z+drift,v)).r;
+     float kNear=below?0.:texture2D(clouds,vec2(u-parallax.w+drift,v)).g;
+     if(mFar<.5&&mMid<.5&&mNear<.5&&kFar<.25&&kNear<.25)discard;
      // Back to front: far ridge, far clouds, mid ridge, near clouds, near ridge.
      vec3 c=far;bool cloud=false;
-     if(k.r>.25){c=mix(k.r>.75?cloudFront:cloudBack,haze,.18);cloud=true;}
-     if(m.g>.5){c=mid;cloud=false;}
-     if(k.g>.25){c=k.g>.75?cloudFront:cloudBack;cloud=true;}
-     if(m.b>.5){c=near;cloud=false;}
+     if(kFar>.25){c=mix(kFar>.75?cloudFront:cloudBack,haze,.18);cloud=true;}
+     if(mMid>.5){c=mid;cloud=false;}
+     if(kNear>.25){c=kNear>.75?cloudFront:cloudBack;cloud=true;}
+     if(mNear>.5){c=near;cloud=false;}
      // Ground haze: the ridge feet dissolve into the fog color, dithered in the same pixel steps as the scene fog.
      // Low clouds only fade right at their base, so they stay white just above the horizon.
      float h=1.-smoothstep(-.05,cloud?hazeHeight*.45:hazeHeight,v);h=floor(h*8.+bayer4(gl_FragCoord.xy*.5))/8.;

@@ -1,5 +1,6 @@
 import {SkyGradient} from './SkyGradient';
 import {MountainRing} from './MountainRing';
+import {setWaterDaylight,setWaterFog} from '../systems/WaterReflection';
 import {FIXED_GRADE} from '../data/colorGrade';
 import {ColorGradePass} from './ColorGradePass';
 import {BoundaryPass} from './BoundaryPass';
@@ -45,7 +46,7 @@ export class CityScene{
   this.skyGradient.update(time.night,time.hour);(this.scene.fog as T.Fog).color.copy(this.skyGradient.fogColor);this.mountains.update(this.skyGradient.fogColor,this.skyGradient.material.uniforms.upper.value,dt,this.skyGradient.sunset,time.night);
   this.sun.color.copy(time.sun);this.sun.intensity=time.sunPower;this.ambient.color.copy(time.ambient);this.ambient.intensity=time.ambientPower;
   const angle=(time.hour-6)/24*Math.PI*2;this.sun.position.set(Math.cos(angle)*28,Math.max(9,Math.sin(angle)*35),18);
-  setNightLights(time.night,dt);this.boundary?.update(this.ambient,this.sun,time.sky,this.scene.fog as T.Fog);
+  setNightLights(time.night,dt);setWaterDaylight(1-time.night);setWaterFog(this.skyGradient.fogColor);this.boundary?.update(this.ambient,this.sun,time.sky,this.scene.fog as T.Fog);
   this.bloomStage+=(STAGES[Math.max(0,this.stage)].bloom-this.bloomStage)*(1-Math.exp(-dt*.25));
   if(this.bloom){
    // Daylight highlights need a visible baseline; keep the established night glow.
@@ -55,10 +56,10 @@ export class CityScene{
   }
  }
  setStreetLights(positions:T.Vector3[],night:number){this.streetLights.forEach((light,i)=>{light.intensity=positions[i]?night*2.4:0;if(positions[i])light.position.copy(positions[i]);});}
- render(camera:T.PerspectiveCamera){if(this.composer)this.composer.render();else this.renderer.render(this.scene,camera);}
+ render(camera:T.PerspectiveCamera){this.mountains.setView(camera);if(this.composer)this.composer.render();else this.renderer.render(this.scene,camera);}
  /** Keep the pixel-grain look on any screen: render scale is capped by an absolute buffer size, so fullscreen on large monitors never gets smoother than the intended grain. UI is DOM and stays crisp. */
  private pixelScale(w:number,h:number){const coarse=matchMedia('(pointer: coarse)').matches;// Phones get the same buffer budget as desktop: the post chain (boundary, bloom, grade) is fill-rate bound there.
-  return Math.min(.5,(coarse?800:960)/Math.max(w,h),(coarse?480:540)/Math.min(w,h));}
+  return Math.min(.5,(coarse?880:960)/Math.max(w,h),(coarse?520:540)/Math.min(w,h));}
  setCrt(on:boolean){if(this.crt)this.crt.enabled=on;}
  resize(w:number,h:number){const scale=this.pixelScale(w,h);this.renderer.setPixelRatio(scale);this.renderer.setSize(w,h);if(this.composer){this.composer.setPixelRatio(scale);this.composer.setSize(w,h);}if(this.crt)(this.crt.uniforms.resolution.value as T.Vector2).set(w*scale,h*scale);}
 }

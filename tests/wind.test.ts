@@ -21,7 +21,7 @@ function simulate(level:number,base:number,windEnabled:boolean){
  }
  buildings.clear();return {collapsed,maxTilt};
 }
-const low=simulate(1,0,true),tower=simulate(8,0,true),raisedCalm=simulate(5,17,false),raisedWind=simulate(5,17,true);
+const low=simulate(1,0,true),tower=simulate(9,0,true),raisedCalm=simulate(5,17,false),raisedWind=simulate(5,17,true);
 console.log({low,tower,raisedCalm,raisedWind});
 assert.equal(low.collapsed,false,'ground-level housing survives');
 assert.equal(tower.collapsed,false,'standalone final tower remains viable');
@@ -30,7 +30,7 @@ assert.equal(raisedWind.collapsed,true,'wind physically tips elevated building p
 function stackTrial(enabled:boolean){
  physics.reset();wind.reset(923);wind.setWeather('STRONG_WIND');wind.remaining=1000;const fallen:number[]=[];
  const stack=new BuildingSystem(scene,physics,b=>fallen.push(b.level));
- stack.spawn(7,0,7.515,0);stack.spawn(5,0,18.28,0);
+ stack.spawn(8,0,7.515,0);stack.spawn(5,0,18.28,0);
  for(let i=0;i<60*36;i++){if(enabled)wind.step(1/60,stack.buildings);physics.step();stack.update(1/60);}
  stack.clear();return fallen;
 }

@@ -31,7 +31,7 @@ export class TerrainSystem{
     if(random()<.65){const ripple=box(this.group,.4+random()*.4,.014,.035,w.x,-.151,w.z,0xa4d9d5);ripple.castShadow=false;this.ripples.push(ripple);}
    }else{
     const bank=this.banks.has(k),dirt=random()<.16;
-    groundTexture(box(this.group,1.5,.34,1.5,w.x,-.17,w.z,bank?0xccbe91:dirt?0xb9ad82:[0x9fb97d,0xaac38a,0x9bb581][Math.floor(random()*3)]),bank||dirt?'dirt':'grass');
+    groundTexture(box(this.group,1.5,.34,1.5,w.x,-.17,w.z,bank?0xccbe91:dirt?0xb9ad82:[0x96ba8a,0xa0c496,0x92b58c][Math.floor(random()*3)]),bank||dirt?'dirt':'grass');
     if(bank&&random()<.55){box(this.group,.13,.34,.13,w.x+.48,.17,w.z+.42,0x638d68);box(this.group,.08,.46,.08,w.x+.32,.23,w.z+.5,0x7da475);}
     if(cx>1&&cx<14&&z!==this.bridgeRow&&random()<.023){this.blocked.add(k);const rock=new T.Group();box(rock,.7,.4,.6,w.x,.2,w.z,0x8d9c85);box(rock,.44,.25,.4,w.x+.1,.48,w.z-.04,0xa9b29a);this.group.add(rock);this.rocks.set(k,rock);}
    }

@@ -32,7 +32,7 @@ export class SurroundingTerrainSystem{
    const channel=channels.get(z),water=channel!==undefined&&Math.abs(x-channel)<2.3,bank=channel!==undefined&&Math.abs(x-channel)<4.8;
    const hills=(Math.sin(x*.17+phase)+Math.cos(z*.13-phase)+2)*.35;
    const top=water?-.16:bank?0:Math.floor(hills*clamp((distance-3)/12,0,1)*4)/4;
-   const tile=add(3,2+top,3,x,top/2-1,z,water?0x67adb5:bank?0xccbe91:[0x9fb97d,0xaac38a,0x9bb581][Math.floor(random()*3)]);
+   const tile=add(3,2+top,3,x,top/2-1,z,water?0x67adb5:bank?0xccbe91:[0x96ba8a,0xa0c496,0x92b58c][Math.floor(random()*3)]);
    if(water)this.waterTiles.push([x,z]);
    if(!water)groundTexture(tile,bank?'dirt':'grass');
    if(!water&&!bank&&distance>3&&distance<25&&random()<.09){
@@ -55,7 +55,7 @@ export class SurroundingTerrainSystem{
   this.group.traverse(o=>{if(!(o instanceof T.Mesh))return;const material=(o.material as T.MeshLambertMaterial).clone();const foliage=!!o.geometry.getAttribute('leafCenter');
    // A lone unbatched leaf still uses local positions; bake it just like the batches.
    if(foliage&&(o.position.lengthSq()>0||o.scale.x!==1)){o.updateMatrix();o.geometry.applyMatrix4(o.matrix);o.position.set(0,0,0);o.scale.set(1,1,1);}
-   if([0x9fb97d,0xaac38a,0x9bb581,0x64865e,0x78986a].includes(material.color.getHex()))this.colors.push({material,green:material.color.clone(),dry:new T.Color(foliage?0xaa945b:0xc5b074)});
+   if([0x96ba8a,0xa0c496,0x92b58c,0x64865e,0x78986a].includes(material.color.getHex()))this.colors.push({material,green:material.color.clone(),dry:new T.Color(foliage?0xaa945b:0xc5b074)});
    configureGroundTexture(material);const groundHook=material.onBeforeCompile;
    material.onBeforeCompile=(shader,renderer)=>{groundHook.call(material,shader,renderer);
    shader.vertexShader='varying vec2 sceneryXZ;\n'+shader.vertexShader;
@@ -67,7 +67,7 @@ export class SurroundingTerrainSystem{
   };material.customProgramCacheKey=()=> 'scenery-distance-fog-v3-'+foliage+'-'+(material.userData.groundKind??'plain');o.material=material;this.materials.push(material);});
  }
  update(dt:number,maxLevel:number){
-  if(maxLevel>=7)this.drying=true;
+  if(maxLevel>=8)this.drying=true;
   if(!this.drying||this.decay.value>=1)return;
   this.decay.value=Math.min(1,this.decay.value+Math.max(0,dt)/45);
   const t=T.MathUtils.smoothstep(this.decay.value,0,1);

@@ -11,4 +11,4 @@ for(const data of BUILDINGS)for(let variant=0;variant<3;variant++){
  let batchedVertices=0,owned=0,disposed=0;model.traverse(o=>{if(o instanceof T.Mesh){batchedVertices+=o.geometry.getAttribute('position').count;assert.ok(materials.has(o.material as T.Material),'animated material identity retained');if(o.userData.batchedGeometry){owned++;o.geometry.addEventListener('dispose',()=>disposed++);}}});
  assert.equal(batchedVertices,vertices);disposeBatches(model);assert.equal(disposed,owned);
 }
-console.log('PASS: all 24 residential variants preserve visual bounds, geometry and shared animated materials; generated buffers are disposed.');
+console.log(`PASS: all ${BUILDINGS.length*3} residential variants preserve visual bounds, geometry and shared animated materials; generated buffers are disposed.`);

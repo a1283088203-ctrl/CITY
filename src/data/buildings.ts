@@ -5,10 +5,14 @@ export const BUILDINGS:BuildingData[] = [
  {level:3,mass:25,name:'Town Apartment',label:'街角公寓',width:2.25,depth:2,height:2.7,population:36,livingSpace:29,color:0xf0cb91,roof:0x477f84},
  {level:4,mass:65,name:'Apartment Block',label:'城市住区',width:2.5,depth:2.3,height:4,population:120,livingSpace:21,color:0xa9c5b7,roof:0x416d78},
  {level:5,mass:180,name:'High-rise Residence',label:'垂直社区',width:2.7,depth:2.5,height:6.5,population:500,livingSpace:14,color:0x80aeb2,roof:0x36596e},
- {level:6,mass:650,name:'Mega Residential Tower',label:'超高层住宅',width:3,depth:2.8,height:10,population:2000,livingSpace:9,color:0x78918f,roof:0x354c50},
- {level:7,mass:1750,name:'Arcology Block',label:'巨构住宅',width:3.4,depth:3,height:15,population:8000,livingSpace:5.8,color:0x667c83,roof:0x2d414a},
- {level:8,mass:4750,name:'Utopia Tower',label:'乌托邦之塔',width:3.8,depth:3.4,height:22,population:100000,livingSpace:3.2,color:0x526a73,roof:0x263940}
+ // Level 6: modern residence (white concrete, ribbon glazing, glass balconies) built by BuildingModern.ts.
+ {level:6,mass:340,name:'Glass Balcony Residence',label:'玻璃阳台住宅',width:2.8,depth:2.6,height:8.1,population:1050,livingSpace:11,color:0xdcdfdb,roof:0x66787c},
+ {level:7,mass:650,name:'Mega Residential Tower',label:'超高层住宅',width:3,depth:2.8,height:10,population:2000,livingSpace:9,color:0x78918f,roof:0x354c50},
+ {level:8,mass:1750,name:'Arcology Block',label:'巨构住宅',width:3.4,depth:3,height:15,population:8000,livingSpace:5.8,color:0x667c83,roof:0x2d414a},
+ {level:9,mass:4750,name:'Utopia Tower',label:'乌托邦之塔',width:3.8,depth:3.4,height:22,population:100000,livingSpace:3.2,color:0x526a73,roof:0x263940}
 ];
 export const buildingData=(level:number)=>BUILDINGS[level-1];
+/** Highest tier; it no longer merges. */
+export const MAX_LEVEL=BUILDINGS.length;
 
 
