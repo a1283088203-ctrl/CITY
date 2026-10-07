@@ -65,9 +65,8 @@ export class SoundSystem{
  /** Place: a round mid "bo" over a soft thump, loud enough for phone speakers. */
  drop(){this.pop(scale(3),0,.32,.14,1.7);this.thump(170,.32,.16);}
  impact(speed:number){const t=this.context?.currentTime??0;if(t-this.lastImpact<.13)return;this.lastImpact=t;const v=Math.min(.3,.08+speed*.013);this.pop(scale(1),0,v,.1,1.4);this.thump(130,v*.8,.14);}
- /** Merge: the same round "bo" + soft thump as placing, a little higher and louder so it reads as a reward.
-  * Bigger buildings land one step lower. */
- merge(level:number){const step=Math.max(4,9-Math.floor(level/2));this.pop(scale(step),0,.42,.16,1.8);this.thump(200,.36,.16);}
+ /** Merge: one big, loud bubble pop with a soft thump underneath; bigger buildings pop slightly lower and rounder. */
+ merge(level:number){const f=scale(Math.max(2,8-Math.floor(level/2)));this.pop(f,0,.55,.2,2.2);this.thump(f*.5,.28,.18);}
  /** Collapse: tumbling pops falling down the scale over a soft crumble and thud. */
  collapse(){this.fizz(.45,.16,1200,'lowpass',0,240);this.thump(150,.3,.4);[6,4,3,1,0].forEach((s,i)=>this.pop(scale(s),.04+i*.07,.17,.11,.6));}
  /** City stage unlocked: a quick bubbly run up the scale, ending on a held high pop. */

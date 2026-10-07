@@ -36,7 +36,9 @@ export class CityScene{
  enablePostProcessing(camera:T.PerspectiveCamera){
   this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=Math.pow(2,FIXED_GRADE.exposure);
   this.composer=new EffectComposer(this.renderer);for(const target of [this.composer.renderTarget1,this.composer.renderTarget2])target.depthTexture=new T.DepthTexture(target.width,target.height,T.UnsignedIntType);this.composer.addPass(new RenderPass(this.scene,camera));this.boundary=new BoundaryPass(camera);this.composer.addPass(this.boundary);
-  this.bloom=new UnrealBloomPass(new T.Vector2(innerWidth/2,innerHeight/2),.12,.18,1.25);this.composer.addPass(this.bloom);this.composer.addPass(new OutputPass());this.colorGrade=new ColorGradePass();this.colorGrade.set(FIXED_GRADE);this.composer.addPass(this.colorGrade);
+  this.bloom=new UnrealBloomPass(new T.Vector2(innerWidth/2,innerHeight/2),.12,.18,1.25);this.composer.addPass(this.bloom);
+  // Soft knee: brightness ramps into the bloom over a wide band rather than a hard 0.01 cutoff.
+  (this.bloom.highPassUniforms as {smoothWidth:{value:number}}).smoothWidth.value=.35;this.composer.addPass(new OutputPass());this.colorGrade=new ColorGradePass();this.colorGrade.set(FIXED_GRADE);this.composer.addPass(this.colorGrade);
   this.crt=new ShaderPass(CRT_SHADER);this.crt.enabled=false;this.composer.addPass(this.crt);
   this.scene.add(...this.streetLights);for(const light of [this.sun,this.ambient,...this.streetLights])light.layers.enable(1);
  }
@@ -50,16 +52,19 @@ export class CityScene{
   this.bloomStage+=(STAGES[Math.max(0,this.stage)].bloom-this.bloomStage)*(1-Math.exp(-dt*.25));
   if(this.bloom){
    // Daylight highlights need a visible baseline; keep the established night glow.
-   this.bloom.strength=T.MathUtils.lerp(.3+this.bloomStage*.5,this.bloomStage,time.night)*this.bloomScale;
-   this.bloom.threshold=T.MathUtils.lerp(.85,1.25,time.night);
+   // Lower thresholds with a wide soft knee (smoothWidth in the constructor): moderately bright surfaces, lamps and
+   // lit windows glow a little, and the glow grows smoothly with brightness instead of only kicking in near white.
+   this.bloom.strength=T.MathUtils.lerp(.26+this.bloomStage*.45,.3+this.bloomStage,time.night)*this.bloomScale;
+   this.bloom.threshold=T.MathUtils.lerp(.62,.5,time.night);
    this.bloom.radius=.12+this.bloomStage*.15;
   }
  }
  setStreetLights(positions:T.Vector3[],night:number){this.streetLights.forEach((light,i)=>{light.intensity=positions[i]?night*2.4:0;if(positions[i])light.position.copy(positions[i]);});}
  render(camera:T.PerspectiveCamera){this.mountains.setView(camera);if(this.composer)this.composer.render();else this.renderer.render(this.scene,camera);}
  /** Keep the pixel-grain look on any screen: render scale is capped by an absolute buffer size, so fullscreen on large monitors never gets smoother than the intended grain. UI is DOM and stays crisp. */
- private pixelScale(w:number,h:number){const coarse=matchMedia('(pointer: coarse)').matches;// Phones get the same buffer budget as desktop: the post chain (boundary, bloom, grade) is fill-rate bound there.
-  return Math.min(.5,(coarse?880:960)/Math.max(w,h),(coarse?520:540)/Math.min(w,h));}
+ private pixelScale(w:number,h:number){const coarse=matchMedia('(pointer: coarse)').matches;
+  // On phones the scale cap is what limits sharpness (the pixel caps sit above a phone's CSS size); 0.6 trades a little fill rate for clarity.
+  return Math.min(coarse?.6:.5,(coarse?880:960)/Math.max(w,h),(coarse?520:540)/Math.min(w,h));}
  setCrt(on:boolean){if(this.crt)this.crt.enabled=on;}
  resize(w:number,h:number){const scale=this.pixelScale(w,h);this.renderer.setPixelRatio(scale);this.renderer.setSize(w,h);if(this.composer){this.composer.setPixelRatio(scale);this.composer.setSize(w,h);}if(this.crt)(this.crt.uniforms.resolution.value as T.Vector2).set(w*scale,h*scale);}
 }
