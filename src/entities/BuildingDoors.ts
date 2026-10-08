@@ -41,7 +41,7 @@ export function buildingDoor(g:Group,data:BuildingData,variant:number){
   part(.045,.09,w*.34,h*.53,0xe1b66b,3);
  }else{ // Cyan-edged megacity portal; follows the existing night cycle.
   part(w-.1,h-.06,0,h/2,ink,2);part(.025,h-.08,0,h/2,glass,3);
-  for(const side of [-1,1])litBox(g,.024,h*.8,.008,side*(w/2-.035),bottom+h*.5,z+.088,0x73b8b5,0x77eee0,1.5);
+  for(const side of [-1,1])litBox(g,.024,h*.8,.008,side*(w/2-.035),bottom+h*.5,z+.088,0xdfe8ea,0xfff1d8,1.5);
   part(w*.65,.04,0,h-.03,trim,3);
  }
  g.userData.doorStyle=style;

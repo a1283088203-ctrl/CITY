@@ -38,7 +38,7 @@ wind.setWeather('STRONG_WIND');wind.step(1/60,[]);assert.ok(wind.strength<.01,'w
 wind.step(5,[]);assert.ok(wind.strength>.6);wind.setWeather('CALM');wind.step(5,[]);assert.equal(wind.strength,0,'true calm after transition');
 wind.reset(19);const states=new Set<string>();for(let i=0;i<600*60;i++){wind.step(1/60,[]);states.add(wind.state);}assert.equal(states.size,3,'random weather visits all states');
 // First ground building is anchored; a comparable elevated building is not immune.
-const anchor=buildings.spawn(9,0,11,0);anchor.windReady=true;wind.setWeather('STRONG_WIND');wind.remaining=100;wind.step(5,[anchor]);assert.equal(Math.hypot(anchor.body.linvel().x,anchor.body.linvel().y,anchor.body.linvel().z),0);
+const anchor=buildings.spawn(10,0,11,0);anchor.windReady=true;wind.setWeather('STRONG_WIND');wind.remaining=100;wind.step(5,[anchor]);assert.equal(Math.hypot(anchor.body.linvel().x,anchor.body.linvel().y,anchor.body.linvel().z),0);
 buildings.clear();const light=buildings.spawn(5,-4,50,0),heavy=buildings.spawn(6,4,50,0);light.windReady=heavy.windReady=true;wind.step(1/60,[light,heavy]);assert.ok(Math.hypot(heavy.body.linvel().x,heavy.body.linvel().z)<Math.hypot(light.body.linvel().x,light.body.linvel().z),'heavier tier accelerates less at equal exposure');
 buildings.clear();roads.reset();roads.terrain=undefined;
 const homeA=buildings.spawn(1,-5,1,0),homeB=buildings.spawn(1,5,1,0),score=new ScoreSystem();

@@ -36,7 +36,7 @@ export function decorateResidence(parent:T.Group,data:BuildingData,variant:numbe
    box(g,.25,.06,.25,-w*.3,-h/2+.04,-d*.29,0xab8265);
    box(g,.04,.62,.04,-w*.3,-h/2+.36,-d*.29,0x806f59);
   }
-  if(l>=7)litBox(g,.32,.12,.04,-w*.28,h*.12,front,0x668b99,0x87d9e4,1.6);
+  if(l>=7)litBox(g,.32,.12,.04,-w*.28,h*.12,front,0xdfe8ea,0xfff1d8,1.6);
  }else{
   // Utility details: small mailboxes/vents, then tanks and facade service pipes.
   box(g,.2,.22,.12,-w*.3,-h/2+.25,front,0x718c8a);
@@ -48,7 +48,7 @@ export function decorateResidence(parent:T.Group,data:BuildingData,variant:numbe
    box(g,w*.2,.25,d*.22,w*.23,h/2+.305,-d*.18,0x94a4a0);
    box(g,w*.22,.035,d*.24,w*.23,h/2+.4475,-d*.18,0x637f83);
    box(g,.055,h*.6,.055,-w*.36,0,-front,0x93a5a0);
-   if(l>=7)litBox(g,.055,h*.18,.06,-w*.36,h*.15,-front-.035,0x54899a,0xa5dadd,1.4);
+   if(l>=7)litBox(g,.055,h*.18,.06,-w*.36,h*.15,-front-.035,0xdfe8ea,0xfff1d8,1.4);
   }
  }
  parent.userData.variant=variant;

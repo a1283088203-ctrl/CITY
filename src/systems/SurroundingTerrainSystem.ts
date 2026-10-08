@@ -67,7 +67,7 @@ export class SurroundingTerrainSystem{
   };material.customProgramCacheKey=()=> 'scenery-distance-fog-v3-'+foliage+'-'+(material.userData.groundKind??'plain');o.material=material;this.materials.push(material);});
  }
  update(dt:number,maxLevel:number){
-  if(maxLevel>=8)this.drying=true;
+  if(maxLevel>=9)this.drying=true;
   if(!this.drying||this.decay.value>=1)return;
   this.decay.value=Math.min(1,this.decay.value+Math.max(0,dt)/45);
   const t=T.MathUtils.smoothstep(this.decay.value,0,1);

@@ -26,8 +26,8 @@ for(const entrance of roads.entrances)assert.ok(paths.find(entrance,p=>p.x===0||
 const path=paths.find({x:1,z:1},p=>p.x===3&&p.z===1,new Set(['2,1']));assert.equal(path.length,5,'shortest route goes around obstacle');
 const pop=new PopulationSystem();pop.update(buildings.buildings);assert.equal(pop.population,40);assert.ok(pop.space<48);
 // Each adjacent pair in the complete upgrade chain must merge using real contact manifolds.
-for(let level=2;level<=8;level++){buildings.clear();merge.reset();events=0;const d=buildingData(level);buildings.spawn(level,-d.width/2,d.height/2+.02,0);buildings.spawn(level,d.width/2,d.height/2+.02,0);step(8);assert.equal(events,1,`level ${level} merge`);assert.equal(buildings.buildings[0].level,level+1);}
-buildings.clear();merge.reset();const final=buildingData(9);buildings.spawn(9,-2,final.height/2,0);buildings.spawn(9,2,final.height/2,0);step(3);assert.equal(buildings.buildings.length,2,'maximum level does not merge');
+for(let level=2;level<=9;level++){buildings.clear();merge.reset();events=0;const d=buildingData(level);buildings.spawn(level,-d.width/2,d.height/2+.02,0);buildings.spawn(level,d.width/2,d.height/2+.02,0);step(8);assert.equal(events,1,`level ${level} merge`);assert.equal(buildings.buildings[0].level,level+1);}
+buildings.clear();merge.reset();const final=buildingData(10);buildings.spawn(10,-2,final.height/2,0);buildings.spawn(10,2,final.height/2,0);step(3);assert.equal(buildings.buildings.length,2,'maximum level does not merge');
 buildings.clear();
 const effects=new EffectsSystem(buildings.scene);let collapses=0;
 buildings.onCollapse=b=>{collapses++;effects.collapse(b);};
@@ -40,8 +40,8 @@ for(const [pitch,yaw,roll,expected] of [[0,170,0,false],[44.9,80,0,false],[45,12
  if(expected){assert.equal(buildings.buildings.length,0);assert.equal(physics.world.getRigidBody(handle),null);assert.ok(effects.particles.length>0);buildings.update(1/60);assert.equal(collapses-before,1,'collapse fires once');pop.update(buildings.buildings);assert.equal(pop.population,0);}
  buildings.clear();effects.clear();assert.equal(effects.particles.length,0);
 }
-const debrisBuilding=buildings.spawn(9,0,15,0);effects.collapse(debrisBuilding);assert.ok(effects.particles.length<=280);effects.update(3);assert.equal(effects.particles.length,0,'debris expires');
-for(let level=3;level<=9;level++){const model=buildingModel(buildingData(level)),body=model.children[0] as T.Mesh,roof=model.children[2] as T.Mesh;assert.ok(roof.position.y+roof.scale.y/2>body.position.y+body.scale.y/2+.1,'roof top is separated from body top');}
+const debrisBuilding=buildings.spawn(10,0,15,0);effects.collapse(debrisBuilding);assert.ok(effects.particles.length<=280);effects.update(3);assert.equal(effects.particles.length,0,'debris expires');
+for(let level=3;level<=10;level++){const model=buildingModel(buildingData(level)),body=model.children[0] as T.Mesh,roof=model.children[2] as T.Mesh;assert.ok(roof.position.y+roof.scale.y/2>body.position.y+body.scale.y/2+.1,'roof top is separated from body top');}
 buildings.clear();physics.reset();assert.equal(buildings.buildings.length,0);physics.world.free();
 console.log('PASS: roof separation, 45-degree boundaries, yaw independence, combined tilt, single collapse, collider removal, population removal, debris lifetime/reset.');
-console.log('PASS: gravity, contacts, all 8 upgrades, no remote merge, stack, dynamic bodies, road avoidance/connectivity, pathfinding, population, reset.');
+console.log('PASS: gravity, contacts, all 9 upgrades, no remote merge, stack, dynamic bodies, road avoidance/connectivity, pathfinding, population, reset.');
