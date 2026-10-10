@@ -129,10 +129,10 @@ export function addProps(g:T.Group,data:BuildingData,variant:number,era:number){
  // Classic cottages and town apartments: the most lived-in props, at the door and on the roof.
  // Terraces match the classic stone plinth (BuildingDetail: building colour × 0.55, 0.1 tall).
  const door=doorLayout(data,variant),stone=new T.Color(data.color).multiplyScalar(.55).getHex();
- const roofTop=roof?h/2+.82:h/2+.18,perch=roof??decor;
+ // Pitched roofs: top of the ridge cap; flat roofs: top of the coping parapet (both from BuildingDetail).
+ const roofTop=roof?h/2+.86:h/2+.24,perch=roof??decor;
  if(v===0){
-  // Already has flower boxes: ivy up the left corner and birds on the ridge.
-  ivy(decor,front,-1,y0,Math.min(h*.85,1.6),seed);
+  // Already has flower boxes: birds on the ridge.
   // Pitched roofs: birds on the ridge. Flat roofs carry rooftop boxes in the middle, so birds sit on the front edge.
   if(roof){bird(perch,-w*.06,roofTop,0,1);if(l>1)bird(perch,w*.08,roofTop,0,-1);}
   else{bird(decor,w*.1,roofTop,d/2+.03,1);bird(decor,w*.18,roofTop,d/2+.03,-1);}

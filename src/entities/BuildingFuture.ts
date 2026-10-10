@@ -85,6 +85,11 @@ export function futureBuilding(g:T.Group,data:BuildingData,variant:number){
   const {span,cols,pw}=bays(f);
   for(let fl=1;fl<floors;fl++)for(let c=0;c<cols;c++)pane(g,f,pw-.13,step*.78,-span/2+pw*(c+.5),base(fl)+step*.5,(c+fl)%2===1);
   for(let k=1;k<cols;k++)onFace(detail,f,.05,h-step,.06,-span/2+pw*k,step/2,.03,FIN);
+  // Slim floor lines between the fins and a pale spandrel strip below each pane, so storeys still count from afar.
+  for(let fl=1;fl<floors;fl++){
+   onFace(detail,f,span,.025,.025,0,base(fl),.02,FIN);
+   for(let c=0;c<cols;c++)onFace(detail,f,pw-.13,.03,.012,-span/2+pw*(c+.5),base(fl)+.04,.018,FRAME);
+  }
  }
  for(const sx of [-1,1])for(const sz of [-1,1]){
   box(detail,.2,h-.1,.2,sx*(w/2-.05),.02,sz*(d/2-.05),TRIM);

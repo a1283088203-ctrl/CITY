@@ -39,6 +39,39 @@ export function refineBuilding(parent:T.Group,data:BuildingData,variant:number){
   box(g,.07,.045,d*.82,-side-.035,y,0,sill);
  }
 
+ // Window heads: a lintel over every window (top rows that meet the eaves are left plain), keystones on the apartment.
+ const head=tint(data.color,.3),key=shade(data.color,.82),xAt=(c:number)=>(c-(cols-1)/2)*w/(cols+1);
+ for(let f=0;f<floors;f++){
+  const y=rowY(f)+.2;if(y+.03>h/2-.02)continue;
+  for(let c=0;c<cols;c++){
+   const x=xAt(c),u=x*d/w;
+   if(!(Math.abs(x)<door.width/2+.17&&rowY(f)-.16<-h/2+door.height+.1)){box(g,.34,.05,.05,x,y,front+.025,head);if(l===3)box(g,.07,.07,.06,x,y,front+.03,key);}
+   box(g,.34,.05,.05,x,y,-front-.025,head);
+   box(g,.05,.05,.34,side+.025,y,u,head);box(g,.05,.05,.34,-side-.025,y,u,head);
+  }
+ }
+ // Drainpipe down the back-right corner.
+ box(g,.05,h-.16,.05,side+.03,-.02,-front+.1,0x8b9a94);
+ box(g,.1,.08,.1,side+.04,h/2-.1,-front+.1,0x7d8c88);
+ box(g,.1,.04,.12,side+.04,-h/2+.12,-front+.1,0x7d8c88);
+ // Eave brackets between the window columns.
+ for(let c=1;c<cols;c++){
+  const x=(xAt(c-1)+xAt(c))/2,u=x*d/w;
+  for(const s of [-1,1]){box(g,.06,.09,.05,x,h/2-.045,s*(front+.025),trim);box(g,.05,.09,.06,s*(side+.025),h/2-.045,u,trim);}
+ }
+ const roof=parent.getObjectByName('pitched-roof');
+ if(roof){
+  // Darker tile courses under each roof step, a ridge cap and a capped chimney.
+  const tile=shade(data.roof,.78);
+  for(let i=0;i<4;i++)for(const s of [-1,1])box(roof,w*(1-i*.2)+.01,.025,.012,0,h/2+.195+i*.16,s*(d/2+.106),tile);
+  box(roof,w*.4+.06,.04,d+.2,0,h/2+.84,0,tile);
+  box(roof,.24,.05,.28,w*.27,h/2+.915,0,shade(0x8c776c,.8));
+  box(roof,.08,.06,.08,w*.27,h/2+.97,0,0x4f4640);
+ }else for(const s of [-1,1]){
+  // Flat roof: a low coping parapet on the slab edge.
+  box(g,w+.12,.06,.06,0,h/2+.21,s*(d/2+.03),trim);box(g,.06,.06,d,s*(w/2+.03),h/2+.21,0,trim);
+ }
+
  if(l<=2){
   // Houses: window shutters on the front.
   for(let f=0;f<floors;f++)for(let c=0;c<cols;c++){

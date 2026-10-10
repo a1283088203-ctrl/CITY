@@ -28,7 +28,12 @@ function pane(g:T.Object3D,f:Face,pw:number,ph:number,u:number,y:number){
 /** Glazing across a face, inset from the corners and split by white piers. */
 function ribbon(g:T.Object3D,f:Face,y:number,ph:number,skip?:(u:number)=>boolean){
  const span=f.span-.3,cols=Math.max(2,Math.round(span/.52)),pw=span/cols;
- for(let c=0;c<cols;c++){const u=-span/2+pw*(c+.5);if(!skip?.(u))pane(g,f,pw-.14,ph,u,y);}
+ for(let c=0;c<cols;c++){
+  const u=-span/2+pw*(c+.5);if(skip?.(u))continue;
+  pane(g,f,pw-.14,ph,u,y);
+  // Slim mullion and a transom near the top split each pane into an openable light.
+  onFace(g,f,.022,ph,.016,u,y,.026,SLAB);onFace(g,f,pw-.14,.02,.016,u,y+ph*.28,.026,SLAB);
+ }
 }
 /** Cantilevered balcony: slab, glass balustrade with a dark handrail, optional potted plant. */
 function balcony(g:T.Object3D,f:Face,u:number,y:number,width:number,depth:number,plant:boolean){
@@ -73,10 +78,21 @@ export function modernBuilding(g:T.Group,data:BuildingData,variant:number){
  onFace(detail,front,w*.5,.05,.4,0,lobbyY+lobbyH/2+.08,.2,SLAB);
  litBox(detail,w*.44,.02,.3,0,lobbyY+lobbyH/2+.045,d/2+.2,0xf2e6c8,0xffd9a0,1.6);
 
- // Glass parapet around the roof edge.
+ // Glass parapet around the roof edge, with dark posts along it.
  for(const s of [-1,1]){
   box(detail,w+.08,.16,.02,0,h/2+.26,s*(d/2+.05),RAIL);box(detail,w+.1,.025,.04,0,h/2+.35,s*(d/2+.05),RAIL_TOP);
   box(detail,.02,.16,d+.08,s*(w/2+.05),h/2+.26,0,RAIL);box(detail,.04,.025,d+.1,s*(w/2+.05),h/2+.35,0,RAIL_TOP);
+  for(let i=1,n=Math.round(w/.5);i<n;i++)box(detail,.025,.16,.03,-w/2+w*i/n,h/2+.26,s*(d/2+.05),RAIL_TOP);
+  for(let i=1,n=Math.round(d/.5);i<n;i++)box(detail,.03,.16,.025,s*(w/2+.05),h/2+.26,-d/2+d*i/n,RAIL_TOP);
+ }
+ // Shadow reveal under every floor slab so the storeys read as stacked plates.
+ for(let f=1;f<floors;f++)box(detail,w+.06,.02,d+.06,0,base(f)-.05,0,RECESS);
+ // Lobby: two tall planters standing on the ground beside the door.
+ for(const s of [-1,1]){
+  const u=s*(doorW/2+.17);
+  onFace(decor,front,.18,.26,.16,u,-h/2+.13,.08,POT);
+  onFace(decor,front,.16,.12,.14,u,-h/2+.32,.08,GREEN[s+1]);
+  onFace(decor,front,.08,.08,.08,u+s*.02,-h/2+.42,.08,GREEN[1-s]);
  }
 
  if(l===4){
