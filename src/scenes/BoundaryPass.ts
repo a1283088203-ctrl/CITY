@@ -6,6 +6,8 @@ import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
  */
 export class BoundaryPass extends ShaderPass{
  private skyContribution=new T.Color();
+ /** This frame's scene depth, for later passes (depth of field) that read from a ping-ponged target. */
+ depth:T.Texture|null=null;
  constructor(private camera:T.PerspectiveCamera){
   super({uniforms:{tDiffuse:{value:null},tDepth:{value:null},texel:{value:new T.Vector2()},cameraRange:{value:new T.Vector2()},fogRange:{value:new T.Vector2(70,160)},environment:{value:new T.Color()},illumination:{value:1}},
    vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
@@ -58,7 +60,7 @@ export class BoundaryPass extends ShaderPass{
   this.material.depthTest=false;this.material.depthWrite=false;
  }
  override render(renderer:T.WebGLRenderer,writeBuffer:T.WebGLRenderTarget,readBuffer:T.WebGLRenderTarget,deltaTime:number,maskActive:boolean){
-  this.uniforms.tDepth.value=readBuffer.depthTexture;
+  this.uniforms.tDepth.value=this.depth=readBuffer.depthTexture;
   this.uniforms.texel.value.set(1/readBuffer.width,1/readBuffer.height);
   this.uniforms.cameraRange.value.set(this.camera.near,this.camera.far);
   super.render(renderer,writeBuffer,readBuffer,deltaTime,maskActive);

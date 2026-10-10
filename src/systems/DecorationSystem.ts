@@ -17,7 +17,7 @@ export class DecorationSystem{
  lampPositions:T.Vector3[]=[];private links=new Map<string,T.Group>();
  constructor(scene:T.Scene){scene.add(this.group);}
  update(roads:RoadSystem,stage:number,green:number,dt=1/60){
- for(const [k,e] of this.entries){if(roads.blocked.has(k)||roads.roads.has(k)||roads.terrain?.blocked.has(k)){release(e.mesh);this.entries.delete(k);}else if((e.kind==='tree'&&e.rank>green*.46)||(e.kind==='bush'&&e.rank>green*.66)){e.mesh.scale.multiplyScalar(Math.exp(-dt*4));if(e.mesh.scale.y<.08){release(e.mesh);this.entries.delete(k);}}}
+ for(const [k,e] of this.entries){if(roads.blocked.has(k)||roads.roads.has(k)||roads.terrain?.blocked.has(k)){release(e.mesh);this.entries.delete(k);}else if((e.kind==='tree'&&e.rank>green*.28)||(e.kind==='bush'&&e.rank>green*.42)){e.mesh.scale.multiplyScalar(Math.exp(-dt*4));if(e.mesh.scale.y<.08){release(e.mesh);this.entries.delete(k);}}}
  // Quick shrink (~0.6s) when a lower greenery target clears a tree, so it reads as deliberate rather than a slow fade.
  const signature=`${roads.version}:${stage}`;if(signature===this.last)return;this.last=signature;
  for(let x=1;x<15;x++)for(let z=1;z<15;z++){const p={x,z};if(roads.blocked.has(key(p))||roads.roads.has(key(p)))continue;const w=toWorld(p),near=neighbors(p).some(n=>roads.roads.has(key(n)));
@@ -27,10 +27,10 @@ export class DecorationSystem{
  // reshuffle them: a tree cleared by urbanisation cannot pop back, and kept trees stay put.
  const cellRandom=seeded(cellSeed^0x2545f491),rank=cellRandom(),choice=cellRandom();
  const mesh=new T.Group();let kind='';
- // Trees and shrubs are a single vertex-coloured mesh in local space; about half the trees get undergrowth.
- if(rank<green*.46){kind='tree';vegetation(mesh,treeGeometry(cellSeed,choice<.5?1+Math.floor(choice*4):0),w.x,w.z);}
+ // Trees and shrubs are a single vertex-coloured mesh in local space; about a third of the trees get undergrowth.
+ if(rank<green*.28){kind='tree';vegetation(mesh,treeGeometry(cellSeed,choice<.3?1+Math.floor(choice*6):0),w.x,w.z);}
  // Free-standing shrub patches on green cells away from roads.
- else if(!near&&rank<green*.66){kind='bush';vegetation(mesh,shrubGeometry(cellSeed^0x85ebca6b,2+Math.floor(choice*3)),w.x,w.z);}
+ else if(!near&&rank<green*.42){kind='bush';vegetation(mesh,shrubGeometry(cellSeed^0x85ebca6b,2+Math.floor(choice*3)),w.x,w.z);}
  else if(near&&choice<(stage===0?.12:.32)){kind='lamp';box(mesh,.07,1.1,.07,w.x,.55,w.z,0x426269);litBox(mesh,.32,.1,.21,w.x,1.12,w.z,0xffdc98,0xffd38b,2.8);}
  // Later eras: clean white info kiosks and planted light boxes along the streets (no neon signage).
  else if(near&&stage>=3&&choice<.65){kind='kiosk';box(mesh,.1,1.2,.1,w.x,.6,w.z,0xe6ebea);box(mesh,.72,.52,.1,w.x,1.14,w.z,0xf4f4f0);litBox(mesh,.6,.4,.02,w.x,1.14,w.z+.06,0xdfe8ea,0xfff1d8,1.5);}

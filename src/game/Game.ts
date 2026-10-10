@@ -24,6 +24,7 @@ import {ScoreSystem} from '../systems/ScoreSystem';
 import {DemolitionSystem} from '../systems/DemolitionSystem';
 import {TouchInputSystem} from '../systems/TouchInputSystem';
 import {ForegroundClouds} from '../systems/ForegroundClouds';
+import {mountTimePickers} from '../systems/TimePicker';
 import {buildingModel} from '../entities/Building';
 import {randomBuildingVariant} from '../entities/BuildingDecorations';
 import {buildingData,MAX_LEVEL} from '../data/buildings';
@@ -33,10 +34,10 @@ import {clamp} from '../utils/math';
 export class Game{
  city:CityScene;camera:CameraController;physics=new PhysicsSystem();buildings:BuildingSystem;merge:MergeSystem;paths=new PathfindingSystem();roads:RoadSystem;npcs:NPCSystem;vehicles:VehicleSystem;decorations:DecorationSystem;progress=new ProgressionSystem();population=new PopulationSystem();effects:EffectsSystem;ui:UIManager;wind:WindSystem;terrain:TerrainSystem;time=new TimeOfDaySystem();sound=new SoundSystem();score=new ScoreSystem();
  demolition:DemolitionSystem;private paused=false;private missileMode=false;
- private touch?:TouchInputSystem;private foregroundClouds:ForegroundClouds;
+ private touch?:TouchInputSystem;private foregroundClouds:ForegroundClouds;private refreshTimePickers=()=>{};
  private buildingQueue=new BuildingQueue();private currentVariant=0;private nextVariant=0;
  private ghost!:T.Group;private marker:T.Mesh;private current=1;private next=1;private yaw=0;private x=0;private z=0;private dropY=5;private cooldown=0;private elapsed=0;private accumulator=0;private roadTimer=0;private warning=0;private over=false;private last=0;private pointerDown:{x:number;y:number}|null=null;private dragDistance=0;private keyboardAim=false;private lastHoverX=0;private lastHoverY=0;
- constructor(parent:HTMLElement){this.city=new CityScene(parent);this.foregroundClouds=new ForegroundClouds(parent);this.camera=new CameraController(this.city.renderer.domElement);this.city.enablePostProcessing(this.camera.camera);this.buildings=new BuildingSystem(this.city.scene,this.physics);this.roads=new RoadSystem(this.city.scene,this.paths);this.npcs=new NPCSystem(this.city.scene,this.roads,this.paths);this.vehicles=new VehicleSystem(this.city.scene,this.roads,this.paths,true);this.decorations=new DecorationSystem(this.city.scene);this.effects=new EffectsSystem(this.city.scene);this.ui=new UIManager(parent);this.wind=new WindSystem(this.city.scene);this.terrain=new TerrainSystem(this.city.scene);this.roads.terrain=this.terrain;this.wind.onChange=state=>{if(state==='STRONG_WIND'){this.ui.notify('STRONG WIND! · 高处建筑请注意稳固');this.sound.warning();}};
+ constructor(parent:HTMLElement){this.city=new CityScene(parent);this.foregroundClouds=new ForegroundClouds(parent);this.camera=new CameraController(this.city.renderer.domElement);this.city.enablePostProcessing(this.camera.camera,this.camera.controls.target);this.buildings=new BuildingSystem(this.city.scene,this.physics);this.roads=new RoadSystem(this.city.scene,this.paths);this.npcs=new NPCSystem(this.city.scene,this.roads,this.paths);this.vehicles=new VehicleSystem(this.city.scene,this.roads,this.paths,true);this.decorations=new DecorationSystem(this.city.scene);this.effects=new EffectsSystem(this.city.scene);this.ui=new UIManager(parent);this.wind=new WindSystem(this.city.scene);this.terrain=new TerrainSystem(this.city.scene);this.roads.terrain=this.terrain;this.wind.onChange=state=>{if(state==='STRONG_WIND'){this.ui.notify('STRONG WIND! · 高处建筑请注意稳固');this.sound.warning();}};
  this.merge=new MergeSystem(this.buildings,(level,p)=>{this.progress.update(level);this.effects.burst(p);this.sound.merge(level);this.camera.pulse();this.ui.notify(level===MAX_LEVEL?'UTOPIA COMPLETED · CAPACITY +100,000':`${level<5?'MERGED':'HOUSING OPTIMIZED'} · ${buildingData(level).label} · ${buildingData(level).population.toLocaleString()} RESIDENTS`);if(level===MAX_LEVEL)this.camera.expand();});
  this.buildings.onCollapse=b=>{this.effects.collapse(b);this.sound.collapse();this.camera.pulse();this.roadTimer=1;};
  this.demolition=new DemolitionSystem(this.city.scene,this.buildings,this.terrain,b=>{this.effects.collapse(b);this.effects.burst(b.mesh.position.clone());this.sound.collapse();this.camera.pulse();this.roadTimer=1;this.ui.notify("DEMOLISHED! · 已拆除");},p=>{this.effects.burst(p);this.sound.collapse();this.camera.pulse();this.ui.notify('岩石已清除 · 地块解锁');});
@@ -47,6 +48,13 @@ export class Game{
  const crtButton=document.getElementById('crt')!;let crtOn=false;try{crtOn=localStorage.getItem('stack-city-crt')==='on';}catch{}
  const crtLabel=()=>{crtButton.textContent=crtOn?'▦ CRT 滤镜 开':'▦ CRT 滤镜 关';crtButton.setAttribute('aria-pressed',String(crtOn));};this.city.setCrt(crtOn);crtLabel();
  crtButton.addEventListener('click',()=>{crtOn=!crtOn;try{localStorage.setItem('stack-city-crt',crtOn?'on':'off');}catch{}this.city.setCrt(crtOn);crtLabel();});
+ const dofButton=document.getElementById('dof')!;let dofOn=true;try{dofOn=localStorage.getItem('stack-city-dof')!=='off';}catch{}
+ const dofLabel=()=>{dofButton.textContent=dofOn?'◎ 微缩景深 开':'◎ 微缩景深 关';dofButton.setAttribute('aria-pressed',String(dofOn));};this.city.setDepthOfField(dofOn);dofLabel();
+ dofButton.addEventListener('click',()=>{dofOn=!dofOn;try{localStorage.setItem('stack-city-dof',dofOn?'on':'off');}catch{}this.city.setDepthOfField(dofOn);dofLabel();});
+ // The colour lab (systems/ColorPanel) is hidden now that the grade is approved in data/colorGrade; mount it again with
+ // `const colorPanel=new ColorPanel(grade=>this.city.setGrade(grade))` and add `colorPanel.timeSlot` to the pickers below.
+ // Day-phase switch in the graphics settings; lighting re-applies at once, even while paused.
+ this.refreshTimePickers=mountTimePickers(this.time,[document.querySelector<HTMLElement>('.pause-panel .gfx-settings')!],()=>this.city.applyLighting(this.time,0));
  const bloomSlider=document.getElementById('bloom') as HTMLInputElement,bloomValue=document.getElementById('bloom-value')!;
  let bloomPct=100;try{bloomPct=Math.min(160,Math.max(0,Number(localStorage.getItem('stack-city-bloom'))||100));}catch{}
  bloomSlider.value=String(bloomPct);bloomValue.textContent=`${bloomPct}%`;this.city.bloomScale=bloomPct/100;
@@ -57,7 +65,7 @@ export class Game{
  const occupied:{x:number;z:number}[]=[];for(const level of [1,1,2]){const d=buildingData(level),plot=this.terrain.findPlot(d.width,d.depth,occupied);if(plot){occupied.push(plot);const b=this.buildings.spawn(level,plot.x,d.height/2+.05,plot.z);b.age=1;}}const initial=buildingData(this.current),start=this.terrain.findPlot(initial.width,initial.depth,occupied);if(start){this.x=start.x;this.z=start.z;}
  this.roads.rebuild(this.buildings.buildings,true);this.preview();this.ui.notify('WELCOME HOME · 将同级建筑叠在一起，等待合成');}
  private preview(){if(this.ghost){this.ghost.traverse(o=>{if(o instanceof T.Mesh)(o.material as T.Material).dispose();});this.ghost.removeFromParent();}this.ghost=buildingModel(buildingData(this.current),true,this.progress.index,this.currentVariant);this.city.scene.add(this.ghost);this.ui.queue(this.current,this.next);this.positionPreview();}
- private setPaused(value:boolean){this.paused=value;this.touch?.reset();this.pointerDown=null;this.accumulator=0;this.last=0;this.camera.controls.enabled=!value;this.ui.pause(value);this.sound.update(0,0);}
+ private setPaused(value:boolean){this.paused=value;if(value)this.refreshTimePickers();this.touch?.reset();this.pointerDown=null;this.accumulator=0;this.last=0;this.camera.controls.enabled=!value;this.ui.pause(value);this.sound.update(0,0);}
  private toggleMissile(){if(this.paused||this.over||this.demolition.cooldown>0)return;this.touch?.reset();this.missileMode=!this.missileMode;this.ui.tool(this.missileMode,this.demolition.cooldown);this.positionPreview();}
  private positionPreview(){
  if(this.missileMode){this.x=clamp(this.x,-CITY.half,CITY.half);this.z=clamp(this.z,-CITY.half,CITY.half);const target=this.demolition.aim(this.x,this.z);this.demolition.preview.visible=!this.over;this.ghost.visible=false;this.marker.visible=!this.over;this.marker.position.set(this.x,.16,this.z);const markW=target?target.kind==='building'?target.building.data.width:1.1:1,markD=target?target.kind==='building'?target.building.data.depth:1.1:1;this.marker.scale.set(markW,markD,1);(this.marker.material as T.MeshBasicMaterial).color.setHex(target?0xffaa66:0xe56666);return;}

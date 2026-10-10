@@ -8,6 +8,7 @@ const WHITE=new T.Color(1,1,1);
 export class MountainRing{
  readonly mesh:T.Mesh;
  private readonly far=new T.Color();private readonly mid=new T.Color();private readonly near=new T.Color();private readonly tint=new T.Color();private readonly haze=new T.Color();
+ private readonly sunDir=new T.Vector2(1,0);private readonly sunLight=new T.Color();private readonly shade=new T.Color();
  private readonly cloudBack=new T.Color();private readonly cloudFront=new T.Color();private readonly drift={value:0};
  private readonly cloudTexture=new T.DataTexture(new Uint8Array(CLOUD_W*CLOUD_H*4),CLOUD_W,CLOUD_H);
  /** Per-layer texture offsets (far ridge, mid ridge, far clouds, near clouds), in ring turns. */
@@ -38,11 +39,22 @@ export class MountainRing{
   clouds.wrapS=T.RepeatWrapping;clouds.magFilter=T.NearestFilter;clouds.minFilter=T.NearestFilter;clouds.generateMipmaps=false;
   this.rerollClouds();
   const material=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,
-   uniforms:{map:{value:texture},clouds:{value:clouds},far:{value:this.far},mid:{value:this.mid},near:{value:this.near},cloudBack:{value:this.cloudBack},cloudFront:{value:this.cloudFront},drift:this.drift,parallax:{value:this.parallax},range:{value:new T.Vector2(base,top)},repeats:{value:3},haze:{value:this.haze},hazeHeight:{value:.5}},
-   vertexShader:'varying vec2 vUv;varying float vY;void main(){vUv=uv;vY=position.y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-   fragmentShader:`uniform sampler2D map,clouds;uniform vec3 far,mid,near,cloudBack,cloudFront,haze;uniform vec2 range;uniform vec4 parallax;uniform float repeats,hazeHeight,drift;varying vec2 vUv;varying float vY;
+   uniforms:{sunDir:{value:this.sunDir},sunLight:{value:this.sunLight},shade:{value:this.shade},map:{value:texture},clouds:{value:clouds},far:{value:this.far},mid:{value:this.mid},near:{value:this.near},cloudBack:{value:this.cloudBack},cloudFront:{value:this.cloudFront},drift:this.drift,parallax:{value:this.parallax},range:{value:new T.Vector2(base,top)},repeats:{value:3},haze:{value:this.haze},hazeHeight:{value:.5}},
+   vertexShader:'varying vec2 vUv;varying float vY;varying vec2 vXZ;void main(){vUv=uv;vY=position.y;vXZ=position.xz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+   fragmentShader:`uniform sampler2D map,clouds;uniform vec3 far,mid,near,cloudBack,cloudFront,haze,sunLight,shade;uniform vec2 range,sunDir;uniform vec4 parallax;uniform float repeats,hazeHeight,drift;varying vec2 vUv;varying float vY;varying vec2 vXZ;
     float bayer2(vec2 a){a=floor(a);return fract(a.x/2.+a.y*a.y*.75);}
     float bayer4(vec2 a){return bayer2(.5*a)*.25+bayer2(a);}
+    float layerMask(vec2 uv,int layer){vec4 m=texture2D(map,uv);return layer==0?m.r:layer==1?m.g:m.b;}
+    // Light and shade on a ridge silhouette: flanks that slope towards the sun (along the ring) are lit, the others
+    // fall into shade, and the crest catches a rim of sunlight. Measured from the mask's empty space above-left/right.
+    vec3 shadeRidge(vec3 c,vec2 uv,int layer,float side,float facing,float strength){
+     float open=0.;
+     for(int i=1;i<=3;i++){float a=float(i);open+=step(layerMask(uv+vec2(side*a*1.5/512.,a/64.),layer),.5);}
+     float flank=open/3.,crest=step(layerMask(uv+vec2(0.,1.5/64.),layer),.5);
+     float lit=clamp(flank*(.55+.45*facing)+crest*.5,0.,1.);
+     vec3 sunlit=c*(1.+sunLight*.55)+sunLight*.04,shaded=c*shade;
+     return mix(c,mix(shaded,sunlit,floor(lit*3.+.5)/3.),strength);
+    }
     void main(){float v=(vY-range.x)/(range.y-range.x);
      // Parallax: each layer is sampled at its own offset (see setView), so deeper layers turn slower with the camera.
      // Below the horizon only the solid near foothill band is drawn.
@@ -55,11 +67,15 @@ export class MountainRing{
      float kNear=below?0.:texture2D(clouds,vec2(u-parallax.w+drift,v)).g;
      if(mFar<.5&&mMid<.5&&mNear<.5&&kFar<.25&&kNear<.25)discard;
      // Back to front: far ridge, far clouds, mid ridge, near clouds, near ridge.
+     // Sun relative to this part of the ring: the tangent picks the lit flank, facing the ring's inner side
+     // (sun behind the viewer) brightens the whole face, a sun behind the ridges leaves mostly the crest lit.
+     vec2 n=normalize(vXZ);float side=dot(vec2(n.y,-n.x),sunDir)>0.?1.:-1.,facing=clamp(dot(-n,sunDir)*.5+.5,0.,1.);
      vec3 c=far;bool cloud=false;
+     if(mFar>.5&&!below)c=shadeRidge(far,vec2((u-parallax.x)*repeats,v),0,side,facing,.45);
      if(kFar>.25){c=mix(kFar>.75?cloudFront:cloudBack,haze,.18);cloud=true;}
-     if(mMid>.5){c=mid;cloud=false;}
+     if(mMid>.5){c=shadeRidge(mid,vec2((u-parallax.y)*repeats,v),1,side,facing,.7);cloud=false;}
      if(kNear>.25){c=kNear>.75?cloudFront:cloudBack;cloud=true;}
-     if(mNear>.5){c=near;cloud=false;}
+     if(mNear>.5){c=below?near:shadeRidge(near,vec2(u*repeats,v),2,side,facing,1.);cloud=false;}
      // Ground haze: the ridge feet dissolve into the fog color, dithered in the same pixel steps as the scene fog.
      // Low clouds only fade right at their base, so they stay white just above the horizon.
      float h=1.-smoothstep(-.05,cloud?hazeHeight*.45:hazeHeight,v);h=floor(h*8.+bayer4(gl_FragCoord.xy*.5))/8.;
@@ -70,7 +86,12 @@ export class MountainRing{
   scene.add(this.mesh);
  }
  /** Farther ridges sit closer to the haze; nearer ones are a little denser and cooler. */
- update(fog:T.Color,sky:T.Color,dt=0,sunset=0,night=0){
+ update(fog:T.Color,sky:T.Color,dt=0,sunset=0,night=0,sunPosition?:T.Vector3,sunColor?:T.Color,sunPower=0){
+  // Ridge light and shade follow the sun: warm light on the sun-side flanks, cool sky-tinted shade on the rest.
+  if(sunPosition&&(sunPosition.x||sunPosition.z))this.sunDir.set(sunPosition.x,sunPosition.z).normalize();
+  this.sunLight.copy(sunColor??WHITE).multiplyScalar(Math.min(1,sunPower/2.5)*(1-night));
+  // Same clear blue-grey family as the scene's cast shadows.
+  this.shade.setRGB(.64,.74,1).lerp(sky,.15);
   // The outer scenery fades to exactly the fog color, so the ridge feet do too.
   this.haze.copy(fog);
   // Clouds start from the fog colour and are lifted towards white. By day they are nearly white; at sunrise,

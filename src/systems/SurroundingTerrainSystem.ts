@@ -4,7 +4,7 @@ import {box} from '../utils/mesh';
 import {batchStatic,disposeBatches} from '../utils/batch';
 import {seeded,clamp} from '../utils/math';
 import {fromKey,toWorld} from '../utils/grid';
-import {mountainCell,type MountainField} from '../utils/mountains';
+import {mountainBlock,type MountainField} from '../utils/mountains';
 import {vegetationMaterial} from '../utils/tree';
 
 /** The build area's tree material plus the scenery distance fog and alpha tag, so far trees fade with the ground
@@ -37,7 +37,9 @@ export class SurroundingTerrainSystem{
   const ends=[0,15].map(row=>{const cells=[...river].map(fromKey).filter(p=>p.z===row);return cells.reduce((n,p)=>n+toWorld(p).x,0)/Math.max(1,cells.length);});
   const channels=new Map<number,number>();
   for(const side of [-1,1]){let x=ends[side<0?0:1];for(let row=0;row<12;row++){channels.set(side*(13.5+row*3),x);x=clamp(x+(random()-.5)*2.4,-15,15);}}
-  const add=(w:number,h:number,d:number,x:number,y:number,z:number,color:number)=>{const m=box(this.group,w,h,d,x,y,z,color);m.castShadow=false;m.receiveShadow=false;return m;};
+  const add=(w:number,h:number,d:number,x:number,y:number,z:number,color:number)=>{const m=box(this.group,w,h,d,x,y,z,color);m.castShadow=false;m.receiveShadow=true;return m;};
+  // Mountain blocks cast and catch the sun's shadows (the shadow frustum spans the scenery), giving the range light and shade.
+  const rock=(w:number,h:number,d:number,x:number,y:number,z:number,color:number)=>box(this.group,w,h,d,x,y,z,color);
   const leaf=(w:number,h:number,d:number,x:number,y:number,z:number,color:number)=>{
    const m=add(w,h,d,x,y,z,color);m.geometry=m.geometry.clone();m.userData.batchedGeometry=true;
    const count=m.geometry.attributes.position.count,centers=new Float32Array(count*3),delays=new Float32Array(count),delay=random()*.45;
@@ -49,32 +51,47 @@ export class SurroundingTerrainSystem{
   // The mountain range shared with TerrainSystem climbs on out here to snowy peaks. It has its own random stream
   // so the rivers stay the same for a seed.
   const peaks=seeded(seed^0x7d3a11),crest=field.crest;
-  const mountain=(x:number,z:number,channel?:number)=>{
-   let m=field.height(x,z);
-   // Rivers cut a valley through the range instead of being buried.
+  // Continuous range height (rivers cut a valley through it instead of being buried); blocks snap it themselves.
+  const mountain=(x:number,z:number)=>{
+   const channel=channels.get(Math.floor(z/3)*3+1.5);let m=field.height(x,z);
    if(channel!==undefined)m*=clamp((Math.abs(x-channel)-4.8)/7,0,1);
-   return Math.round((m+(peaks()-.5)*.6)*2)/2;
+   return m;
   };
-  for(let ix=-16;ix<16;ix++)for(let iz=-16;iz<16;iz++){
-   const x=ix*3+1.5,z=iz*3+1.5;if(Math.abs(x)<12&&Math.abs(z)<12)continue;
-   const distance=Math.max(Math.abs(x),Math.abs(z))-12;
+  const tileAt=(ix:number,iz:number)=>{
+   const x=ix*3+1.5,z=iz*3+1.5,distance=Math.max(Math.abs(x),Math.abs(z))-12;
    const channel=channels.get(z),water=channel!==undefined&&Math.abs(x-channel)<2.3,bank=channel!==undefined&&Math.abs(x-channel)<4.8;
    const hills=(Math.sin(x*.17+phase)+Math.cos(z*.13-phase)+2)*.35;
    const lowland=water?-.16:bank?0:Math.floor(hills*clamp((distance-3)/12,0,1)*4)/4;
+   const inside=Math.abs(x)<12&&Math.abs(z)<12,peak=inside||water||bank?0:mountain(x,z);
+   return {x,z,distance,water,bank,lowland,inside,peak:peak>=.5};
+  };
+  // Mountains come in mixed block sizes: wherever a 2x2 group of scenery tiles is all mountain it starts as one
+  // 6-unit block, the rest as 3-unit blocks, and each splits down only where the slope or chance asks for it.
+  const used=new Set<string>();
+  for(let ix=-16;ix<16;ix+=2)for(let iz=-16;iz<16;iz+=2){
+   const group=[[0,0],[1,0],[0,1],[1,1]].map(([a,b])=>tileAt(ix+a,iz+b));
+   if(group.every(t=>t.peak)&&peaks()<.85){
+    const floor=Math.max(...group.map(t=>t.lowland));
+    mountainBlock(rock,plant,ix*3+3,iz*3+3,6,-2,(px,pz)=>Math.max(floor,mountain(px,pz)),crest,peaks);
+    group.forEach(t=>used.add(`${t.x},${t.z}`));
+   }
+  }
+  for(let ix=-16;ix<16;ix++)for(let iz=-16;iz<16;iz++){
+   const {x,z,distance,water,bank,lowland,inside,peak}=tileAt(ix,iz);if(inside||used.has(`${x},${z}`))continue;
    // Water keeps its sunken top (-0.16) so the river reflection plane (-0.154) stays visible above it.
-   const peak=water||bank?0:mountain(x,z,channel),top=water?lowland:Math.max(lowland,peak);
+   const top=lowland;
    const grass=[0x96ba8a,0xa0c496,0x92b58c][Math.floor(random()*3)];
-   if(peak>=.5){
-    // Mountains use the build area's 1.5-unit cells and its ground texture, so the range reads at the same
-    // pixel grain as the city and its tops blend meadow -> rock -> snow like the grass/soil edges inside.
-    for(const ox of [-.75,.75])for(const oz of [-.75,.75])mountainCell(add,plant,x+ox,z+oz,-2,Math.max(lowland,mountain(x+ox,z+oz,channel)),crest,peaks);
+   if(peak){
+    // Mountains use the build area's tiles and ground texture, so the range reads at the same pixel grain as
+    // the city and its tops blend meadow -> rock -> snow like the grass/soil edges inside.
+    mountainBlock(rock,plant,x,z,3,-2,(px,pz)=>Math.max(lowland,mountain(px,pz)),crest,peaks);
     continue;
    }
    const color=water?0x67adb5:bank?0xccbe91:grass;
    const tile=add(3,2+top,3,x,top/2-1,z,color);
    if(water)this.waterTiles.push([x,z]);
    if(!water)groundTexture(tile,bank?'dirt':'grass');
-   if(!water&&!bank&&distance>3&&distance<25&&random()<.09){
+   if(!water&&!bank&&distance>3&&distance<25&&random()<.045){
     const px=x+(random()-.5),pz=z+(random()-.5);
     if(random()<.4){add(.7,.4,.6,px,top+.2,pz,0x8d9c85);}
     else{const h=.8+random()*.9;add(.18,h,.18,px,top+h/2,pz,0x786c48);leaf(1.1,.7,.9,px,top+h,pz,0x64865e);leaf(.65,.4,.65,px+.12,top+h+.45,pz,0x78986a);}
