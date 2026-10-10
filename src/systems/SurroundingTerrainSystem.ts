@@ -4,6 +4,24 @@ import {box} from '../utils/mesh';
 import {batchStatic,disposeBatches} from '../utils/batch';
 import {seeded,clamp} from '../utils/math';
 import {fromKey,toWorld} from '../utils/grid';
+import {mountainCell,type MountainField} from '../utils/mountains';
+import {vegetationMaterial} from '../utils/tree';
+
+/** The build area's tree material plus the scenery distance fog and alpha tag, so far trees fade with the ground
+ * instead of floating in the haze. Wind sway still comes from the shared vegetation hook. */
+let sceneryVegetationMaterial:T.MeshLambertMaterial|undefined;
+function sceneryVegetation(){
+ if(sceneryVegetationMaterial)return sceneryVegetationMaterial;
+ const material=new T.MeshLambertMaterial({vertexColors:true}),wind=vegetationMaterial.onBeforeCompile;
+ material.onBeforeCompile=(shader,renderer)=>{wind.call(vegetationMaterial,shader,renderer);
+  shader.vertexShader='varying vec2 sceneryXZ;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nsceneryXZ=(modelMatrix*vec4(position,1.0)).xz;');
+  shader.fragmentShader='varying vec2 sceneryXZ;\n'+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>','#include <opaque_fragment>\ngl_FragColor.a=.75;');
+  shader.fragmentShader=shader.fragmentShader.replace('#include <fog_fragment>','#include <fog_fragment>\n#ifdef USE_FOG\n{float sceneryFog=smoothstep(17.0,43.0,length(sceneryXZ));sceneryFog=floor(sceneryFog*6.+bayer4(gl_FragCoord.xy*.5))/6.;gl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,sceneryFog);}\n#endif');
+ };
+ material.customProgramCacheKey=()=>'scenery-vegetation-v1';
+ return sceneryVegetationMaterial=material;
+}
 
 /** Visual scenery only: never added to physics or the buildable grid. */
 export class SurroundingTerrainSystem{
@@ -12,7 +30,7 @@ export class SurroundingTerrainSystem{
  private decay={value:0};private drying=false;
  private colors:{material:T.MeshLambertMaterial;green:T.Color;dry:T.Color}[]=[];
  constructor(scene:T.Scene){this.group.name='surrounding-terrain';scene.add(this.group);}
- generate(seed:number,river:Set<string>){
+ generate(seed:number,river:Set<string>,field:MountainField){
   disposeBatches(this.group);this.group.clear();this.materials.forEach(m=>m.dispose());this.materials=[];this.waterTiles.length=0;this.outerRipples=[];
   this.decay.value=0;this.drying=false;this.colors=[];
   const random=seeded(seed^0x51af37),phase=random()*Math.PI*2;
@@ -26,13 +44,34 @@ export class SurroundingTerrainSystem{
    for(let i=0;i<count;i++){centers.set([x,y,z],i*3);delays[i]=delay;}
    m.geometry.setAttribute('leafCenter',new T.BufferAttribute(centers,3));m.geometry.setAttribute('leafDelay',new T.BufferAttribute(delays,1));
   };
+  // Build-area trees and shrubs on the mountains; they keep the shared wind material (skipped by the fog clone below).
+  const plant=(geometry:T.BufferGeometry,px:number,py:number,pz:number)=>{const m=new T.Mesh(geometry,sceneryVegetation());m.position.set(px,py,pz);m.userData.batchedGeometry=true;this.group.add(m);};
+  // The mountain range shared with TerrainSystem climbs on out here to snowy peaks. It has its own random stream
+  // so the rivers stay the same for a seed.
+  const peaks=seeded(seed^0x7d3a11),crest=field.crest;
+  const mountain=(x:number,z:number,channel?:number)=>{
+   let m=field.height(x,z);
+   // Rivers cut a valley through the range instead of being buried.
+   if(channel!==undefined)m*=clamp((Math.abs(x-channel)-4.8)/7,0,1);
+   return Math.round((m+(peaks()-.5)*.6)*2)/2;
+  };
   for(let ix=-16;ix<16;ix++)for(let iz=-16;iz<16;iz++){
    const x=ix*3+1.5,z=iz*3+1.5;if(Math.abs(x)<12&&Math.abs(z)<12)continue;
    const distance=Math.max(Math.abs(x),Math.abs(z))-12;
    const channel=channels.get(z),water=channel!==undefined&&Math.abs(x-channel)<2.3,bank=channel!==undefined&&Math.abs(x-channel)<4.8;
    const hills=(Math.sin(x*.17+phase)+Math.cos(z*.13-phase)+2)*.35;
-   const top=water?-.16:bank?0:Math.floor(hills*clamp((distance-3)/12,0,1)*4)/4;
-   const tile=add(3,2+top,3,x,top/2-1,z,water?0x67adb5:bank?0xccbe91:[0x96ba8a,0xa0c496,0x92b58c][Math.floor(random()*3)]);
+   const lowland=water?-.16:bank?0:Math.floor(hills*clamp((distance-3)/12,0,1)*4)/4;
+   // Water keeps its sunken top (-0.16) so the river reflection plane (-0.154) stays visible above it.
+   const peak=water||bank?0:mountain(x,z,channel),top=water?lowland:Math.max(lowland,peak);
+   const grass=[0x96ba8a,0xa0c496,0x92b58c][Math.floor(random()*3)];
+   if(peak>=.5){
+    // Mountains use the build area's 1.5-unit cells and its ground texture, so the range reads at the same
+    // pixel grain as the city and its tops blend meadow -> rock -> snow like the grass/soil edges inside.
+    for(const ox of [-.75,.75])for(const oz of [-.75,.75])mountainCell(add,plant,x+ox,z+oz,-2,Math.max(lowland,mountain(x+ox,z+oz,channel)),crest,peaks);
+    continue;
+   }
+   const color=water?0x67adb5:bank?0xccbe91:grass;
+   const tile=add(3,2+top,3,x,top/2-1,z,color);
    if(water)this.waterTiles.push([x,z]);
    if(!water)groundTexture(tile,bank?'dirt':'grass');
    if(!water&&!bank&&distance>3&&distance<25&&random()<.09){
@@ -52,7 +91,7 @@ export class SurroundingTerrainSystem{
   }
   const still=new Set(this.outerRipples);batchStatic(this.group,m=>still.has(m));
   // Fade only scenery with world distance, so zooming out never hides the playable city.
-  this.group.traverse(o=>{if(!(o instanceof T.Mesh))return;const material=(o.material as T.MeshLambertMaterial).clone();const foliage=!!o.geometry.getAttribute('leafCenter');
+  this.group.traverse(o=>{if(!(o instanceof T.Mesh)||o.material===sceneryVegetation())return;const material=(o.material as T.MeshLambertMaterial).clone();const foliage=!!o.geometry.getAttribute('leafCenter');
    // A lone unbatched leaf still uses local positions; bake it just like the batches.
    if(foliage&&(o.position.lengthSq()>0||o.scale.x!==1)){o.updateMatrix();o.geometry.applyMatrix4(o.matrix);o.position.set(0,0,0);o.scale.set(1,1,1);}
    if([0x96ba8a,0xa0c496,0x92b58c,0x64865e,0x78986a].includes(material.color.getHex()))this.colors.push({material,green:material.color.clone(),dry:new T.Color(foliage?0xaa945b:0xc5b074)});
