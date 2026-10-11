@@ -65,7 +65,7 @@ export class CityScene{
   // The sunlight setting scales daylight only; moonlight at night stays as tuned.
   const sunPower=time.sunPower*T.MathUtils.lerp(this.sunScale,1,time.night);this.sun.intensity=sunPower;this.ambient.color.copy(time.ambient);this.ambient.intensity=time.ambientPower;
   // The sun orbits far enough out that the wider shadow frustum's near plane stays clear of the scenery peaks.
-  const angle=(time.hour-6)/24*Math.PI*2;this.sun.position.set(Math.cos(angle)*28,Math.max(9,Math.sin(angle)*35),18).setLength(70);
+  const angle=(time.hour-6)/24*Math.PI*2;this.sun.position.set(Math.cos(angle)*28,Math.max(9,Math.sin(angle)*35),18).setLength(70);this.skyGradient.setLight(this.sun.position);
   this.mountains.update(this.skyGradient.fogColor,this.skyGradient.material.uniforms.upper.value,dt,this.skyGradient.sunset,time.night,this.sun.position,this.sun.color,sunPower);
   setNightLights(time.night,dt);setWaterDaylight(1-time.night);setWaterFog(this.skyGradient.fogColor);
   this.waterLight.copy(this.ambient.color).multiplyScalar(this.ambient.intensity).add(this.waterSun.copy(this.sun.color).multiplyScalar(sunPower*.5)).multiplyScalar(1/WATER_LIGHT_NOON);

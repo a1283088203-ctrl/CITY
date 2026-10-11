@@ -2,7 +2,9 @@ import {groundTexture,resetGroundPalette} from '../utils/groundTexture';
 import * as T from 'three';
 import {SurroundingTerrainSystem} from './SurroundingTerrainSystem';
 import {batchStatic,disposeBatches} from '../utils/batch';
-import {WaterReflection} from './WaterReflection';
+import {WaterReflection,WATER_LAYER} from './WaterReflection';
+/** River tile and ripple colours (inner river, outer waterways, ripple strips). */
+const WATER_COLORS=new Set([0x4a8fc6,0x569bd0,0x5498c9,0xa4d9d5]);
 import {CITY} from '../data/cityConfig';
 import {box} from '../utils/mesh';
 import {seeded,clamp} from '../utils/math';
@@ -55,6 +57,8 @@ export class TerrainSystem{
   }
   this.surroundings.generate(seed,this.water,field);this.ripples.push(...this.surroundings.outerRipples);
   const animated=new Set(this.ripples);for(const rock of this.rocks.values())rock.traverse(o=>{if(o instanceof T.Mesh)animated.add(o);});batchStatic(this.group,m=>animated.has(m));this.reflection=new WaterReflection(this.water,this.bridges,this.surroundings.waterTiles);this.group.add(this.reflection.surface);
+  // River tiles and ripples sit just under the mirror plane; keep them out of the reflection (they showed as a dark grid).
+  for(const root of [this.group,this.surroundings.group])root.traverse(o=>{if(o instanceof T.Mesh&&!Array.isArray(o.material)&&(o.material as T.MeshLambertMaterial).color&&WATER_COLORS.has((o.material as T.MeshLambertMaterial).color.getHex()))o.layers.set(WATER_LAYER);});
  }
  /** Rock lookup for the demolition missile: cell key plus blast center. */
  rockAt(x:number,z:number){

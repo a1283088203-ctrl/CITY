@@ -3,6 +3,8 @@ import {Reflector} from 'three/addons/objects/Reflector.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {fromKey,toWorld} from '../utils/grid';
 
+/** Layer for the river tiles: the main camera renders it, the reflection camera does not. */
+export const WATER_LAYER=2;
 const waterDaylight={value:1},waterFog={value:new T.Color()};
 // User-tunable look (settings water palette), shared by every river surface.
 const waterColor={value:new T.Color('#65adf1')},waterReflect={value:.51},waterOpacity={value:.79},waterGlint={value:1.01};
@@ -42,7 +44,7 @@ function shoreMap(water:Set<string>,outer:[number,number][]){
  return texture;
 }
 
-/** One river-shaped reflection target; only buildings and lighting use layer 1. */
+/** One river-shaped reflection target that mirrors the whole scene (refreshed a few times per second). */
 export class WaterReflection{
  readonly surface:Reflector;private shore:T.DataTexture;
  constructor(water:Set<string>,bridges:Set<string>,outer:[number,number][]=[]){
@@ -113,7 +115,8 @@ export class WaterReflection{
   // Blend colour only and keep the tile's alpha: outer scenery is tagged alpha .75 so the boundary pass skips it.
   // Overwriting that tag drew a dark outline where the far water tiles meet the sky.
   Object.assign(material,{blending:T.CustomBlending,blendSrc:T.SrcAlphaFactor,blendDst:T.OneMinusSrcAlphaFactor,blendSrcAlpha:T.ZeroFactor,blendDstAlpha:T.OneFactor});
-  this.surface.camera.layers.set(1);
+  // Reflect the whole scene (terrain, trees, lamps, mountains, people, cars), not just the buildings on layer 1.
+  this.surface.camera.layers.set(0);this.surface.camera.layers.enable(1);
   const texture=this.surface.getRenderTarget().texture;texture.minFilter=T.NearestFilter;texture.magFilter=T.NearestFilter;
   const render=this.surface.onBeforeRender;let last=-Infinity;
   this.surface.onBeforeRender=(...args)=>{const now=performance.now();if(now-last<(mobile?125:66))return;last=now;render.apply(this.surface,args);};
