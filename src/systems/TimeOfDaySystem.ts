@@ -13,8 +13,13 @@ const FRAMES=[
  {hour:18+50/60,sky:0x172943,sun:0xb6d3ff,ambient:0xa0b9d2,power:.42,fill:.85,night:1},
  {hour:24,sky:0x172943,sun:0xb6d3ff,ambient:0xa0b9d2,power:.42,fill:.85,night:1}
 ];
+/** Full night (between the last dusk and first dawn frames) runs this much faster, so it lasts a third less real time. */
+const NIGHT_START=18+50/60,NIGHT_END=5,NIGHT_RATE=1.5;
 export class TimeOfDaySystem{
- readonly daySeconds=480;elapsed=0;hour=9;day=1;phase:DayPhase='Day';night=0;sunPower=2;ambientPower=1.6;
+ /** Clock seconds per 24 h; `elapsed` is measured in clock seconds. */
+ readonly daySeconds=480;elapsed=0;
+ /** Real seconds for one full day, with the faster night. */
+ get cycleSeconds(){const night=(24-NIGHT_START+NIGHT_END)/24*this.daySeconds;return this.daySeconds-night+night/NIGHT_RATE;}hour=9;day=1;phase:DayPhase='Day';night=0;sunPower=2;ambientPower=1.6;
  sky=new T.Color();sun=new T.Color();ambient=new T.Color();
  /** Hour the clock is held at (settings time switch), or null when the day cycle runs. */
  locked:number|null=null;
@@ -25,7 +30,16 @@ export class TimeOfDaySystem{
   if(hour!==null){const total=9+this.elapsed/this.daySeconds*24;let target=Math.floor(total/24)*24+hour;if(target<9)target+=24;this.elapsed=(target-9)/24*this.daySeconds;}
   this.update(0);
  }
- update(dt:number){if(this.locked===null)this.elapsed+=dt;const total=9+this.elapsed/this.daySeconds*24;this.hour=total%24;this.day=Math.floor(total/24)+1;
+ /** Advances the clock by `dt` real seconds, split at the night boundaries so large steps stay exact. */
+ private advance(dt:number){
+  for(let left=dt,guard=0;left>1e-9&&guard<16;guard++){
+   const h=(9+this.elapsed/this.daySeconds*24)%24,night=h>=NIGHT_START||h<NIGHT_END,rate=night?NIGHT_RATE:1;
+   const hours=night?(h<NIGHT_END?NIGHT_END-h:24-h+NIGHT_END):NIGHT_START-h,toBoundary=hours/24*this.daySeconds/rate;
+   if(left<toBoundary){this.elapsed+=left*rate;return;}
+   this.elapsed+=hours/24*this.daySeconds+1e-7;left-=toBoundary;
+  }
+ }
+ update(dt:number){if(this.locked===null)this.advance(dt);const total=9+this.elapsed/this.daySeconds*24;this.hour=total%24;this.day=Math.floor(total/24)+1;
   this.phase=this.hour>=5&&this.hour<9?'Morning':this.hour>=9&&this.hour<16+40/60?'Day':this.hour>=16+40/60&&this.hour<18+50/60?'Sunset':'Night';
   const i=FRAMES.findIndex((f,index)=>index<FRAMES.length-1&&this.hour>=f.hour&&this.hour<FRAMES[index+1].hour),a=FRAMES[Math.max(0,i)],b=FRAMES[Math.max(0,i)+1];
   const ratio=(this.hour-a.hour)/(b.hour-a.hour),t=ratio*ratio*(3-2*ratio);

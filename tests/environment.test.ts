@@ -28,7 +28,10 @@ for(let seed=0;seed<40;seed++){
  buildings.clear();roads.reset();
 }
 assert.ok(fingerprints.size>30,'seeds generate varied rivers');
-const time=new TimeOfDaySystem();assert.equal(time.hour,9);time.update(480);assert.equal(time.hour,9);assert.equal(time.day,2);
+const time=new TimeOfDaySystem();assert.equal(time.hour,9);time.update(time.cycleSeconds+.01);assert.ok(Math.abs(time.hour-9)<.01);assert.equal(time.day,2);
+// Night (18:50 → 05:00) takes a third less real time than the same span of day.
+assert.ok(Math.abs(time.cycleSeconds-(480-(10+1/6)/24*480/3))<1e-6);
+time.reset();time.update((18+50/60-9)/24*480);const dusk=time.elapsed;time.update(60);assert.ok(Math.abs(time.elapsed-dusk-90)<1e-6,'night runs 1.5x');
 time.reset();time.update((23-9)/24*480);assert.equal(time.phase,'Night');assert.equal(time.night,1);assert.ok(time.activity(0)<.2);assert.ok(time.activity(4)>.9);
 const old=time.sky.clone();time.update(.016);assert.ok(Math.abs(old.r-time.sky.r)+Math.abs(old.g-time.sky.g)+Math.abs(old.b-time.sky.b)<.01); // Colors interpolate continuously.
 const progress=new ProgressionSystem();progress.update(8,299);assert.equal(progress.index,0,'building level alone cannot advance city');progress.update(2,300);assert.equal(progress.index,1);progress.update(6,1500);assert.equal(progress.index,2);progress.update(7,7000);assert.equal(progress.index,3);progress.update(8,30000);assert.equal(progress.index,4);progress.update(1,0);assert.equal(progress.index,4,'old era is retained after population loss');progress.reset();assert.equal(progress.index,0);
@@ -45,6 +48,7 @@ const homeA=buildings.spawn(1,-5,1,0),homeB=buildings.spawn(1,5,1,0),score=new S
 for(let x=0;x<=6;x++)roads.roads.add(key({x,z:8}));
 roads.entranceByBuilding.set(homeA.id,{x:2,z:8});roads.entranceByBuilding.set(homeB.id,{x:6,z:8});roads.version++;
 score.update(buildings.buildings,roads);const connected=score.total;assert.equal(score.connectivity,1);assert.equal(score.served,2);assert.equal(score.populationPoints,8);assert.equal(score.buildingPoints,200);
+assert.equal(score.total,Math.round((score.populationPoints+score.buildingPoints+score.roadPoints)/10),'shown total is one digit shorter');
 roads.roads.delete('3,8');roads.version++;score.update(buildings.buildings,roads);assert.ok(score.total<connected);assert.equal(score.served,1,'disconnected main-road fragment earns no building access');
 roads.roads.add('3,8');roads.version++;score.update(buildings.buildings,roads);assert.equal(score.total,connected);
 buildings.remove(homeB);const apartment=buildings.spawn(3,5,2,0);roads.entranceByBuilding.set(apartment.id,{x:6,z:8});score.update(buildings.buildings,roads);assert.ok(score.total>connected,'population and higher-level building increase score');

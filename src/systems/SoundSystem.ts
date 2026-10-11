@@ -3,6 +3,8 @@
 // C major pentatonic: any run of these notes sounds friendly together.
 const PENTA=[0,2,4,7,9];
 /** Pentatonic step above C4 (step 5 = C5, step 10 = C6). */
+/** Overall output level (doubled from the original 0.32). */
+const MASTER=.64;
 const scale=(step:number)=>{const octave=Math.floor(step/5),i=((step%5)+5)%5;return 261.63*Math.pow(2,(octave*12+PENTA[i])/12);};
 
 export class SoundSystem{
@@ -13,7 +15,9 @@ export class SoundSystem{
   try{
    if(!this.context){
     const c=this.context=new AudioContext();
-    this.master=c.createGain();this.master.gain.value=this.enabled?.32:0;this.master.connect(c.destination);
+    // A soft limiter after the master keeps stacked pops (merges, collapses) from clipping at the louder level.
+    const limiter=c.createDynamicsCompressor();limiter.threshold.value=-6;limiter.knee.value=6;limiter.ratio.value=12;limiter.attack.value=.003;limiter.release.value=.15;limiter.connect(c.destination);
+    this.master=c.createGain();this.master.gain.value=this.enabled?MASTER:0;this.master.connect(limiter);
     // Pops stay mostly dry; a faint short echo just rounds them off.
     this.bus=c.createGain();const warm=c.createBiquadFilter();warm.type='lowpass';warm.frequency.value=6000;
     const delay=c.createDelay(1),feedback=c.createGain(),damp=c.createBiquadFilter(),wet=c.createGain();
@@ -29,7 +33,7 @@ export class SoundSystem{
   }catch{/* Audio restrictions must never block play. */}
  }
  toggle(){this.enabled=!this.enabled;try{localStorage.setItem('stack-city-sound',this.enabled?'on':'off');}catch{}
-  if(this.context&&this.master)this.master.gain.setTargetAtTime(this.enabled?.32:0,this.context.currentTime,.025);if(this.enabled){void this.unlock();this.tick();}return this.enabled;
+  if(this.context&&this.master)this.master.gain.setTargetAtTime(this.enabled?MASTER:0,this.context.currentTime,.025);if(this.enabled){void this.unlock();this.tick();}return this.enabled;
  }
  private ready(){const c=this.context;return c&&this.bus&&this.enabled&&c.state==='running'&&this.voices<32?c:null;}
  /** The core "bloop": pitch sweeps from below the note up past it in a few tens of ms while the level pops and decays.

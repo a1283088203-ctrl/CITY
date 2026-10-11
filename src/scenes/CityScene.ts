@@ -1,6 +1,8 @@
 import {SkyGradient} from './SkyGradient';
 import {MountainRing} from './MountainRing';
-import {setWaterDaylight,setWaterFog} from '../systems/WaterReflection';
+import {setWaterDaylight,setWaterFog,setWaterLight} from '../systems/WaterReflection';
+/** Midday sky + half sun light (TimeOfDay's day frame), so the water light reads 1 at noon. */
+const WATER_LIGHT_NOON=(()=>{const l=(hex:number)=>{const c=new T.Color(hex);return c.r*.2126+c.g*.7152+c.b*.0722;};return l(0xdff3ef)*1.65+l(0xffead0)*3.25*.5;})();
 import {FIXED_GRADE} from '../data/colorGrade';
 import {ColorGradePass,type Grade} from './ColorGradePass';
 import {BoundaryPass} from './BoundaryPass';
@@ -20,7 +22,9 @@ import {CRT_SHADER} from './CrtPass';
 export class CityScene{
  skyGradient:SkyGradient;mountains:MountainRing;
  scene=new T.Scene();renderer:T.WebGLRenderer;sun=new T.DirectionalLight(0xffe2ba,2.5);ambient=new T.HemisphereLight(0xdff5ed,0x647557,2);private stage=0;
- colorGrade?:ColorGradePass;boundary?:BoundaryPass;ambientOcclusion?:AmbientOcclusionPass;depthOfField?:DepthOfFieldPass;composer?:EffectComposer;bloom?:UnrealBloomPass;crt?:ShaderPass;bloomScale=1;private bloomStage=0;private streetLights=[new T.PointLight(0xffd7a1,0,4,2),new T.PointLight(0xffd7a1,0,4,2)];
+ colorGrade?:ColorGradePass;boundary?:BoundaryPass;ambientOcclusion?:AmbientOcclusionPass;depthOfField?:DepthOfFieldPass;composer?:EffectComposer;bloom?:UnrealBloomPass;crt?:ShaderPass;bloomScale=1;sunScale=1;private bloomStage=0;private waterLight=new T.Color();private waterSun=new T.Color();// A fixed pool of real lamp lights (the count is baked into every lit shader, so it never changes): the lamps
+ // nearest the view get one each, the rest only glow.
+ private streetLights=Array.from({length:matchMedia('(pointer: coarse)').matches?4:8},()=>new T.PointLight(0xffd7a1,0,4,2));
  constructor(parent:HTMLElement){
   // Pixel-dithered fog everywhere: quantize the fog factor with an ordered Bayer matrix.
   T.ShaderChunk.fog_pars_fragment=`#ifdef USE_FOG\nuniform vec3 fogColor;varying float vFogDepth;\n#ifdef FOG_EXP2\nuniform float fogDensity;\n#else\nuniform float fogNear;uniform float fogFar;\n#endif\nfloat bayer2(vec2 a){a=floor(a);return fract(a.x/2.+a.y*a.y*.75);}\nfloat bayer4(vec2 a){return bayer2(.5*a)*.25+bayer2(a);}\n#endif`;
@@ -57,11 +61,15 @@ export class CityScene{
  setStage(index:number){this.stage=index;}
  applyLighting(time:TimeOfDaySystem,dt:number){
   this.scene.background=null;
-  this.skyGradient.update(time.night,time.hour);(this.scene.fog as T.Fog).color.copy(this.skyGradient.fogColor);this.sun.color.copy(time.sun);this.sun.intensity=time.sunPower;this.ambient.color.copy(time.ambient);this.ambient.intensity=time.ambientPower;
+  this.skyGradient.update(time.night,time.hour);(this.scene.fog as T.Fog).color.copy(this.skyGradient.fogColor);this.sun.color.copy(time.sun);
+  // The sunlight setting scales daylight only; moonlight at night stays as tuned.
+  const sunPower=time.sunPower*T.MathUtils.lerp(this.sunScale,1,time.night);this.sun.intensity=sunPower;this.ambient.color.copy(time.ambient);this.ambient.intensity=time.ambientPower;
   // The sun orbits far enough out that the wider shadow frustum's near plane stays clear of the scenery peaks.
   const angle=(time.hour-6)/24*Math.PI*2;this.sun.position.set(Math.cos(angle)*28,Math.max(9,Math.sin(angle)*35),18).setLength(70);
-  this.mountains.update(this.skyGradient.fogColor,this.skyGradient.material.uniforms.upper.value,dt,this.skyGradient.sunset,time.night,this.sun.position,this.sun.color,time.sunPower);
-  setNightLights(time.night,dt);setWaterDaylight(1-time.night);setWaterFog(this.skyGradient.fogColor);this.boundary?.update(this.ambient,this.sun,time.sky,this.scene.fog as T.Fog);
+  this.mountains.update(this.skyGradient.fogColor,this.skyGradient.material.uniforms.upper.value,dt,this.skyGradient.sunset,time.night,this.sun.position,this.sun.color,sunPower);
+  setNightLights(time.night,dt);setWaterDaylight(1-time.night);setWaterFog(this.skyGradient.fogColor);
+  this.waterLight.copy(this.ambient.color).multiplyScalar(this.ambient.intensity).add(this.waterSun.copy(this.sun.color).multiplyScalar(sunPower*.5)).multiplyScalar(1/WATER_LIGHT_NOON);
+  setWaterLight(this.waterLight.setRGB(Math.min(1.2,this.waterLight.r),Math.min(1.2,this.waterLight.g),Math.min(1.2,this.waterLight.b)));this.boundary?.update(this.ambient,this.sun,time.sky,this.scene.fog as T.Fog);
   this.bloomStage+=(STAGES[Math.max(0,this.stage)].bloom-this.bloomStage)*(1-Math.exp(-dt*.25));
   if(this.bloom){
    // Daylight highlights need a visible baseline; keep the established night glow.
@@ -72,7 +80,11 @@ export class CityScene{
    this.bloom.radius=.12+this.bloomStage*.15;
   }
  }
- setStreetLights(positions:T.Vector3[],night:number){this.streetLights.forEach((light,i)=>{light.intensity=positions[i]?night*2.4:0;if(positions[i])light.position.copy(positions[i]);});}
+ /** Puts the light pool on the lamps closest to `focus` (the camera target); with fewer lamps the spare lights stay off. */
+ setStreetLights(positions:T.Vector3[],night:number,focus:T.Vector3){
+  const order=positions.length>this.streetLights.length?(positions.slice().sort((a,b)=>a.distanceToSquared(focus)-b.distanceToSquared(focus))):positions;
+  this.streetLights.forEach((light,i)=>{const p=order[i];light.intensity=p?night*2.4:0;if(p)light.position.copy(p);});
+ }
  render(camera:T.PerspectiveCamera){this.mountains.setView(camera);if(this.composer)this.composer.render();else this.renderer.render(this.scene,camera);}
  /** Keep the pixel-grain look on any screen: render scale is capped by an absolute buffer size, so fullscreen on large monitors never gets smoother than the intended grain. UI is DOM and stays crisp. */
  private pixelScale(w:number,h:number){const coarse=matchMedia('(pointer: coarse)').matches;

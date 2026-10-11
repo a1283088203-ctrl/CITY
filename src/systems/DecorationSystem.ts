@@ -10,6 +10,21 @@ import {isFuture} from '../entities/BuildingFuture';
 function vegetation(parent:T.Group,geometry:T.BufferGeometry,x:number,z:number){
  const mesh=new T.Mesh(geometry,vegetationMaterial);mesh.position.set(x,0,z);mesh.castShadow=true;mesh.receiveShadow=true;mesh.userData.owned=true;parent.add(mesh);
 }
+/** Victorian-style street lamp in black iron: a pedestal with a tapered collar, a slim post, a lantern with four
+ * glowing panes and a pyramid cap with a finial. The lantern glass is the light (children[LAMP_GLASS]). */
+const LAMP_STONE=0x22282a,LAMP_STONE_SHADE=0x181c1e,LAMP_IRON=0x1c2123,LAMP_GLASS=7;
+function lamp(mesh:T.Group,x:number,z:number){
+ box(mesh,.17,.3,.17,x,.15,z,LAMP_STONE);box(mesh,.19,.04,.19,x,.02,z,LAMP_STONE_SHADE);
+ box(mesh,.13,.06,.13,x,.33,z,LAMP_STONE_SHADE);box(mesh,.09,.05,.09,x,.385,z,LAMP_STONE);
+ box(mesh,.05,.72,.05,x,.77,z,LAMP_STONE);
+ // Iron collar under the lantern, then the lantern body.
+ box(mesh,.1,.04,.1,x,1.15,z,LAMP_IRON);box(mesh,.2,.03,.2,x,1.18,z,LAMP_IRON);
+ litBox(mesh,.17,.2,.17,x,1.29,z,0xffdc98,0xffd38b,2.8);
+ for(const [dx,dz] of [[1,1],[1,-1],[-1,1],[-1,-1]])box(mesh,.025,.21,.025,x+dx*.088,1.29,z+dz*.088,LAMP_IRON);
+ // Stepped pyramid cap with a small finial.
+ box(mesh,.26,.04,.26,x,1.41,z,LAMP_IRON);box(mesh,.18,.04,.18,x,1.45,z,LAMP_IRON);box(mesh,.1,.04,.1,x,1.49,z,LAMP_IRON);
+ box(mesh,.03,.06,.03,x,1.54,z,LAMP_IRON);
+}
 /** Frees per-tree geometry; shared box geometry and materials are left alone. */
 function release(group:T.Object3D){group.traverse(o=>{if(o instanceof T.Mesh&&o.userData.owned)o.geometry.dispose();});group.removeFromParent();}
 export class DecorationSystem{
@@ -31,7 +46,7 @@ export class DecorationSystem{
  if(rank<green*.28){kind='tree';vegetation(mesh,treeGeometry(cellSeed,choice<.3?1+Math.floor(choice*6):0),w.x,w.z);}
  // Free-standing shrub patches on green cells away from roads.
  else if(!near&&rank<green*.42){kind='bush';vegetation(mesh,shrubGeometry(cellSeed^0x85ebca6b,2+Math.floor(choice*3)),w.x,w.z);}
- else if(near&&choice<(stage===0?.12:.32)){kind='lamp';box(mesh,.07,1.1,.07,w.x,.55,w.z,0x426269);litBox(mesh,.32,.1,.21,w.x,1.12,w.z,0xffdc98,0xffd38b,2.8);}
+ else if(near&&choice<(stage===0?.12:.32)){kind='lamp';lamp(mesh,w.x,w.z);}
  // Later eras: clean white info kiosks and planted light boxes along the streets (no neon signage).
  else if(near&&stage>=3&&choice<.65){kind='kiosk';box(mesh,.1,1.2,.1,w.x,.6,w.z,0xe6ebea);box(mesh,.72,.52,.1,w.x,1.14,w.z,0xf4f4f0);litBox(mesh,.6,.4,.02,w.x,1.14,w.z+.06,0xdfe8ea,0xfff1d8,1.5);}
  else if(near&&stage>=4&&choice<.8){kind='planter';box(mesh,.75,.3,.7,w.x,.15,w.z,0xeeeeea);box(mesh,.65,.22,.6,w.x,.41,w.z,0x86b366);litBox(mesh,.62,.03,.04,w.x,.24,w.z+.36,0xf3eadb,0xffe4bf,1.4);}
@@ -46,7 +61,7 @@ export class DecorationSystem{
   const target=adjacent.find(n=>key(n)===e.mesh.userData.facingRoad)??adjacent[(cell.x*7+cell.z*13)%adjacent.length];
   e.mesh.rotation.y=Math.atan2(target.x-cell.x,target.z-cell.z);e.mesh.userData.facingRoad=key(target);
  }
- this.lampPositions=[...this.entries.values()].filter(e=>e.kind==='lamp').slice(0,2).map(e=>e.mesh.children[1].getWorldPosition(new T.Vector3()));
+ this.lampPositions=[...this.entries.values()].filter(e=>e.kind==='lamp').map(e=>e.mesh.children[LAMP_GLASS].getWorldPosition(new T.Vector3()));
  }
  /** Crown sway runs in the shared vegetation shader; only three uniforms change per frame. */
  updateWind(time:number,wind:{strength:number;direction:T.Vector3}){setVegetationWind(time,wind.strength,wind.direction);}

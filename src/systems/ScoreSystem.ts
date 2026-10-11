@@ -26,6 +26,7 @@ export class ScoreSystem{
   const network=roads.roads.size?this.reachable.size/roads.roads.size:0;
   this.connectivity=buildings.length?.75*coverage+.25*network:0;
   this.roadPoints=Math.round((this.populationPoints+this.buildingPoints)*SCORING.roadBonusRate*this.connectivity);
-  this.total=this.populationPoints+this.buildingPoints+this.roadPoints;
+  // The breakdown stays in raw points; only the shown total is scaled down.
+  this.total=Math.round((this.populationPoints+this.buildingPoints+this.roadPoints)*SCORING.totalScale);
  }
 }
