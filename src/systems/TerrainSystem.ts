@@ -44,7 +44,7 @@ export class TerrainSystem{
    const p={x:cx,z},k=key(p),w=toWorld(p);
    if(this.hills.has(k))continue;
    if(this.water.has(k)){
-    box(this.group,1.5,.12,1.5,w.x,-.22,w.z,[0x5aa2ad,0x67b4bc,0x6aadb4][Math.floor(random()*3)]);
+    box(this.group,1.5,.12,1.5,w.x,-.22,w.z,[0x4a8fc6,0x569bd0,0x5498c9][Math.floor(random()*3)]);
     if(random()<.65){const ripple=box(this.group,.4+random()*.4,.014,.035,w.x,-.151,w.z,0xa4d9d5);ripple.castShadow=false;this.ripples.push(ripple);}
    }else{
     const bank=this.banks.has(k),dirt=random()<.16;

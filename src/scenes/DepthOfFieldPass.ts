@@ -39,9 +39,10 @@ export class DepthOfFieldPass extends ShaderPass{
   this.uniforms.tDepth.value=this.source.depth??readBuffer.depthTexture;
   this.uniforms.texel.value.set(1/readBuffer.width,1/readBuffer.height);
   this.uniforms.cameraRange.value.set(this.camera.near,this.camera.far);
-  // Focus on the far edge of the city as seen from the camera; blur ramps in over the scenery behind it.
+  // Sharp up to a little past the focus target (the city centre); blur starts over the back half of the city and
+  // reaches full strength in the near scenery behind it.
   const distance=this.camera.position.distanceTo(this.target);
-  this.uniforms.focus.value.set(distance+9,distance+9+Math.max(38,distance*1.1));
+  this.uniforms.focus.value.set(distance+3,distance+3+Math.max(26,distance*.75));
   // Max blur radius in render pixels, scaled with the buffer so it looks the same at every resolution.
   this.uniforms.radius.value=Math.max(2.5,readBuffer.height/540*6);
   // The write buffer owns the depth texture being sampled, so render into a private target first (no feedback

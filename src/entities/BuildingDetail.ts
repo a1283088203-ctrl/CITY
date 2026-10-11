@@ -61,9 +61,8 @@ export function refineBuilding(parent:T.Group,data:BuildingData,variant:number){
  }
  const roof=parent.getObjectByName('pitched-roof');
  if(roof){
-  // Darker tile courses under each roof step, a ridge cap and a capped chimney.
+  // A ridge cap and a capped chimney (the roof steps stay clean, without tile-course strips).
   const tile=shade(data.roof,.78);
-  for(let i=0;i<4;i++)for(const s of [-1,1])box(roof,w*(1-i*.2)+.01,.025,.012,0,h/2+.195+i*.16,s*(d/2+.106),tile);
   box(roof,w*.4+.06,.04,d+.2,0,h/2+.84,0,tile);
   box(roof,.24,.05,.28,w*.27,h/2+.915,0,shade(0x8c776c,.8));
   box(roof,.08,.06,.08,w*.27,h/2+.97,0,0x4f4640);

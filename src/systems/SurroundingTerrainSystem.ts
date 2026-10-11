@@ -87,7 +87,7 @@ export class SurroundingTerrainSystem{
     mountainBlock(rock,plant,x,z,3,-2,(px,pz)=>Math.max(lowland,mountain(px,pz)),crest,peaks);
     continue;
    }
-   const color=water?0x67adb5:bank?0xccbe91:grass;
+   const color=water?0x569bd0:bank?0xccbe91:grass;
    const tile=add(3,2+top,3,x,top/2-1,z,color);
    if(water)this.waterTiles.push([x,z]);
    if(!water)groundTexture(tile,bank?'dirt':'grass');

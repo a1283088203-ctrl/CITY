@@ -4,6 +4,12 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {fromKey,toWorld} from '../utils/grid';
 
 const waterDaylight={value:1},waterFog={value:new T.Color()};
+// User-tunable look (settings water palette), shared by every river surface.
+const waterColor={value:new T.Color(.18,.5,.86)},waterReflect={value:.6},waterOpacity={value:.86},waterGlint={value:1};
+export const defaultWater=()=>({color:'#'+new T.Color(.18,.5,.86).getHexString(),reflection:.6,opacity:.86,glint:1});
+export type WaterStyle=ReturnType<typeof defaultWater>;
+/** Water colour (sRGB hex), daytime reflection share, surface opacity and glint strength. */
+export function setWaterStyle(style:WaterStyle){waterColor.value.set(style.color);waterReflect.value=style.reflection;waterOpacity.value=style.opacity;waterGlint.value=style.glint;}
 /** 1 by day, 0 at night: scales the water tones and turns the glints off after dark. */
 export function setWaterDaylight(value:number){waterDaylight.value=value;}
 /** Live fog colour, so far water fades out exactly like the outer terrain. */
@@ -21,7 +27,7 @@ export class WaterReflection{
    uniforms:{color:{value:null},tDiffuse:{value:null},textureMatrix:{value:null},time:{value:0}},
    vertexShader:`uniform mat4 textureMatrix;varying vec4 reflectedUv;varying vec2 riverPosition;
     void main(){riverPosition=position.xy;reflectedUv=textureMatrix*vec4(position,1.0);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-   fragmentShader:`uniform sampler2D tDiffuse;uniform vec3 color,fogTint;uniform float time,daylight;varying vec4 reflectedUv;varying vec2 riverPosition;
+   fragmentShader:`uniform sampler2D tDiffuse;uniform vec3 color,fogTint,waterColor;uniform float time,daylight,waterReflect,waterOpacity,waterGlint;varying vec4 reflectedUv;varying vec2 riverPosition;
     float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
     float bayer2(vec2 a){a=floor(a);return fract(a.x/2.+a.y*a.y*.75);}
     float bayer4(vec2 a){return bayer2(.5*a)*.25+bayer2(a);}
@@ -30,8 +36,10 @@ export class WaterReflection{
      vec2 px=floor(riverPosition*10.)/10.;
      vec2 uv=reflectedUv.xy/reflectedUv.w;uv.x+=sin(px.y*5.0+time*.9)*.0025;uv.y+=sin(px.x*3.0+time*.65)*.0012;
      vec3 reflection=texture2D(tDiffuse,clamp(uv,0.0,1.0)).rgb;
-     vec3 water=vec3(.3,.62,.82)*mix(.28,1.,daylight);
-     vec3 c=mix(water,reflection,mix(.7,.38,daylight));
+     // A clear, saturated blue; the reflection is cooled towards it so mirrored sky and buildings read as in the water.
+     vec3 water=waterColor*mix(.28,1.,daylight);
+     // Night water is darker, so the reflection (lit windows) takes a slightly larger share after dark.
+     vec3 c=mix(water,reflection*vec3(.8,.93,1.08),mix(min(1.,waterReflect+.18),waterReflect,daylight));
      // Glints: short horizontal dashes on a stretched grid, each twinkling on its own phase.
      vec2 cell=floor(riverPosition*vec2(5.,12.));float h=hash(cell);
      float glint=step(.86,h)*smoothstep(.55,.95,sin(time*(1.5+h*2.)+h*40.));
@@ -39,12 +47,12 @@ export class WaterReflection{
      float h2=hash(floor(riverPosition*14.)+7.3);
      float spark=step(.975,h2)*step(.7,sin(time*3.+h2*60.));
      // By day the glints are bright white; at night they stay on as a faint, cool moonlit shimmer.
-     float shine=max(glint*.85,spark)*mix(.32,1.,daylight);
+     float shine=min(1.,max(glint*.85,spark)*mix(.32,1.,daylight)*waterGlint);
      vec3 glow=mix(vec3(.62,.74,.9),vec3(1.,1.,.96),daylight);
      // Same distance fade as the outer terrain (17..43 units, 6 dithered steps), so the far river
      // dissolves into the haze with the land instead of ending in a hard edge at dusk and night.
      float fade=smoothstep(17.,43.,length(riverPosition));fade=clamp(floor(fade*6.+bayer4(gl_FragCoord.xy*.5))/6.,0.,1.);
-     gl_FragColor=vec4(mix(mix(c,glow,shine),fogTint,fade),mix(mix(.72,1.,shine),1.,fade));
+     gl_FragColor=vec4(mix(mix(c,glow,shine),fogTint,fade),mix(mix(waterOpacity,1.,shine),1.,fade));
      #include <tonemapping_fragment>
      #include <colorspace_fragment>
     }`
@@ -52,6 +60,7 @@ export class WaterReflection{
   // Shared, so one call per frame dims the water and its glints for dusk and night.
   (this.surface.material as T.ShaderMaterial).uniforms.daylight=waterDaylight;
   (this.surface.material as T.ShaderMaterial).uniforms.fogTint=waterFog;
+  Object.assign((this.surface.material as T.ShaderMaterial).uniforms,{waterColor,waterReflect,waterOpacity,waterGlint});
   this.surface.name='river-reflection';this.surface.rotation.x=-Math.PI/2;this.surface.position.y=-.154;
   const material=this.surface.material as T.ShaderMaterial;material.transparent=true;material.depthWrite=false;
   // Blend colour only and keep the tile's alpha: outer scenery is tagged alpha .75 so the boundary pass skips it.

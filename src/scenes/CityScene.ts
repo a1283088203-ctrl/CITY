@@ -5,6 +5,7 @@ import {FIXED_GRADE} from '../data/colorGrade';
 import {ColorGradePass,type Grade} from './ColorGradePass';
 import {BoundaryPass} from './BoundaryPass';
 import {DepthOfFieldPass} from './DepthOfFieldPass';
+import {AmbientOcclusionPass} from './AmbientOcclusionPass';
 import * as T from 'three';
 import {box} from '../utils/mesh';
 import {STAGES} from '../data/progression';
@@ -19,7 +20,7 @@ import {CRT_SHADER} from './CrtPass';
 export class CityScene{
  skyGradient:SkyGradient;mountains:MountainRing;
  scene=new T.Scene();renderer:T.WebGLRenderer;sun=new T.DirectionalLight(0xffe2ba,2.5);ambient=new T.HemisphereLight(0xdff5ed,0x647557,2);private stage=0;
- colorGrade?:ColorGradePass;boundary?:BoundaryPass;depthOfField?:DepthOfFieldPass;composer?:EffectComposer;bloom?:UnrealBloomPass;crt?:ShaderPass;bloomScale=1;private bloomStage=0;private streetLights=[new T.PointLight(0xffd7a1,0,4,2),new T.PointLight(0xffd7a1,0,4,2)];
+ colorGrade?:ColorGradePass;boundary?:BoundaryPass;ambientOcclusion?:AmbientOcclusionPass;depthOfField?:DepthOfFieldPass;composer?:EffectComposer;bloom?:UnrealBloomPass;crt?:ShaderPass;bloomScale=1;private bloomStage=0;private streetLights=[new T.PointLight(0xffd7a1,0,4,2),new T.PointLight(0xffd7a1,0,4,2)];
  constructor(parent:HTMLElement){
   // Pixel-dithered fog everywhere: quantize the fog factor with an ordered Bayer matrix.
   T.ShaderChunk.fog_pars_fragment=`#ifdef USE_FOG\nuniform vec3 fogColor;varying float vFogDepth;\n#ifdef FOG_EXP2\nuniform float fogDensity;\n#else\nuniform float fogNear;uniform float fogFar;\n#endif\nfloat bayer2(vec2 a){a=floor(a);return fract(a.x/2.+a.y*a.y*.75);}\nfloat bayer4(vec2 a){return bayer2(.5*a)*.25+bayer2(a);}\n#endif`;
@@ -43,6 +44,8 @@ export class CityScene{
  enablePostProcessing(camera:T.PerspectiveCamera,target:T.Vector3){
   this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=Math.pow(2,FIXED_GRADE.exposure);
   this.composer=new EffectComposer(this.renderer);for(const target of [this.composer.renderTarget1,this.composer.renderTarget2])target.depthTexture=new T.DepthTexture(target.width,target.height,T.UnsignedIntType);this.composer.addPass(new RenderPass(this.scene,camera));this.boundary=new BoundaryPass(camera);this.composer.addPass(this.boundary);
+  // Ambient occlusion from the scene depth, tinted like the cast shadows; before depth of field so it blurs with the background.
+  this.ambientOcclusion=new AmbientOcclusionPass(camera,this.boundary,matchMedia('(pointer: coarse)').matches?8:16);this.composer.addPass(this.ambientOcclusion);
   // Miniature depth of field (background only), in linear light before bloom so blurred highlights stay soft.
   this.depthOfField=new DepthOfFieldPass(camera,target,matchMedia('(pointer: coarse)').matches?12:24,this.boundary);this.composer.addPass(this.depthOfField);
   this.bloom=new UnrealBloomPass(new T.Vector2(innerWidth/2,innerHeight/2),.12,.18,1.25);this.composer.addPass(this.bloom);
@@ -78,6 +81,11 @@ export class CityScene{
  setCrt(on:boolean){if(this.crt)this.crt.enabled=on;}
  /** Live grade from the settings colour lab; exposure drives tone mapping, the rest the grading pass. */
  setGrade(grade:Grade){this.renderer.toneMappingExposure=Math.pow(2,grade.exposure);this.colorGrade?.set(grade);}
+ /** Vignette strength 0..1 (corners darken by up to 60% at 1), on top of the fixed grade. */
+ setVignette(amount:number){if(this.colorGrade)this.colorGrade.uniforms.vignette.value=amount;}
+ /** Background fog density multiplier (1 = the default 70..160 range; 2 starts twice as close; 0 clears it). */
+ setFogDensity(scale:number){const fog=this.scene.fog as T.Fog;if(scale<=.01){fog.near=1e4;fog.far=2e4;return;}fog.near=70/scale;fog.far=160/scale;}
+ setAmbientOcclusion(on:boolean){if(this.ambientOcclusion)this.ambientOcclusion.enabled=on;}
  setDepthOfField(on:boolean){if(this.depthOfField)this.depthOfField.enabled=on;}
  resize(w:number,h:number){const scale=this.pixelScale(w,h);this.renderer.setPixelRatio(scale);this.renderer.setSize(w,h);if(this.composer){this.composer.setPixelRatio(scale);this.composer.setSize(w,h);}if(this.crt)(this.crt.uniforms.resolution.value as T.Vector2).set(w*scale,h*scale);}
 }
